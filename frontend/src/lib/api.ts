@@ -128,8 +128,36 @@ async function get<T>(path: string, params?: Record<string, string | number | bo
   return res.json() as Promise<T>
 }
 
+async function mutate<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    let detail = res.statusText
+    try {
+      detail = (await res.json()).detail ?? detail
+    } catch {
+      /* respuesta no-JSON */
+    }
+    throw new Error(`${res.status} · ${detail}`)
+  }
+  return res.json() as Promise<T>
+}
+
+export interface TelegramCfg {
+  configured: boolean
+  chat_id: string
+  has_token: boolean
+}
+
 export const api = {
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
+  getTelegram: () => get<TelegramCfg>('/settings/telegram'),
+  saveTelegram: (b: { bot_token?: string; chat_id?: string }) =>
+    mutate<TelegramCfg>('PUT', '/settings/telegram', b),
+  testTelegram: () => mutate<{ ok: boolean }>('POST', '/settings/telegram/test'),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
   dbSummary: (db: string, fresh = false) =>
     get<{ table_count: number; total_gb: number; skewed: number; database: string | null } & Freshness>(

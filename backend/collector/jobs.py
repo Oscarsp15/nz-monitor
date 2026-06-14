@@ -4,9 +4,11 @@ Sin dependencia de APScheduler (eso vive en __main__) → estos jobs son unitari
 Cada job es tolerante a fallos: si Netezza no responde, guarda el snapshot como `error`, no rompe
 el scheduler (ver ARCHITECTURE.md §2.1).
 """
+import contextlib
 from collections.abc import Callable
 from typing import Any
 
+import notify
 from cache import get_event_bus
 from config import get_settings
 from netezza import queries as q
@@ -62,7 +64,9 @@ def collect_alerts() -> Any:
 
 
 def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | None = None) -> dict:
-    """Ejecuta un job, persiste el snapshot y publica un evento. No lanza excepción."""
+    """Ejecuta un job, persiste el snapshot, publica un evento y (alertas) notifica. No lanza."""
+    # estado previo de alertas ANTES de guardar (para detectar críticos nuevos → Telegram)
+    prev = snapshots.latest_snapshot(metric_type) if metric_type == ALERTS else None
     try:
         payload = fn()
         status, error = "ok", None
@@ -75,6 +79,10 @@ def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | Non
         "snapshots",
         {"metric_type": metric_type, "status": status, "collected_at": collected_at},
     )
+    if status == "ok" and metric_type == ALERTS:
+        # una notificación nunca rompe el recolector (notify ya es tolerante a fallos)
+        with contextlib.suppress(Exception):
+            notify.notify_alerts(prev, payload)
     return {
         "metric_type": metric_type, "status": status, "collected_at": collected_at, "error": error,
     }
