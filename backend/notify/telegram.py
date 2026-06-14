@@ -68,11 +68,10 @@ def notify_alerts(payload: dict | None) -> None:
     """
     if not configured() or not payload:
         return
-    crit_alerts = [a for a in payload.get("alerts", [])
-                   if a.get("level") == "crit" and a.get("ds") is not None]
-    crit = sorted({a["ds"] for a in crit_alerts})
+    crit_alerts = [a for a in payload.get("alerts", []) if a.get("level") == "crit"]
+    crit = sorted(a.get("key") or f"ds:{a.get('ds')}" for a in crit_alerts)
     notified = set(json.loads(get_setting("telegram_notified_crit") or "[]"))
-    is_new = any(d not in notified for d in crit)
+    is_new = any(k not in notified for k in crit)
     mins = _minutes_since(get_setting("telegram_last_notify"))
     is_remind = bool(crit) and mins >= REMIND_AFTER_MIN
 

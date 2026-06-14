@@ -25,6 +25,9 @@ ALERTS = "alerts"
 # (banda de alarma 95–97%): el piso del clúster ronda el 85%, así que avisar a 85% era ruido.
 DS_WARN = 90.0
 DS_CRIT = 95.0
+# umbrales de disco SFTP (%): push (Telegram) al superar 90%
+SFTP_WARN = 85.0
+SFTP_CRIT = 90.0
 
 S = get_settings()
 
@@ -41,24 +44,55 @@ def collect_space_overview() -> Any:
     return {"databases": service.space_by_db()}
 
 
-def collect_alerts() -> Any:
-    """Alertas derivadas: dataslices saturados (ds_percentused es TEXT → parsear)."""
-    alerts = []
-    max_pct = 0.0
+def _dataslice_alerts() -> tuple[list[dict], float]:
+    alerts, max_pct = [], 0.0
     for r in service.run(q.SQL_DSLICE):
         try:
             pct = float(r["pct"])
         except (TypeError, ValueError):
             continue
         max_pct = max(max_pct, pct)
+        ds = int(r["ds_id"])
         if pct >= DS_CRIT:
-            alerts.append({"level": "crit", "kind": "dataslice", "ds": int(r["ds_id"]),
+            alerts.append({"level": "crit", "kind": "dataslice", "ds": ds, "key": f"ds:{ds}",
                            "value": round(pct, 1),
-                           "message": f"Dataslice {r['ds_id']} saturado al {pct:.0f}%"})
+                           "message": f"Dataslice {ds} saturado al {pct:.0f}%"})
         elif pct >= DS_WARN:
-            alerts.append({"level": "warn", "kind": "dataslice", "ds": int(r["ds_id"]),
-                           "value": round(pct, 1),
-                           "message": f"Dataslice {r['ds_id']} al {pct:.0f}%"})
+            alerts.append({"level": "warn", "kind": "dataslice", "ds": ds, "key": f"ds:{ds}",
+                           "value": round(pct, 1), "message": f"Dataslice {ds} al {pct:.0f}%"})
+    return alerts, max_pct
+
+
+def _sftp_disk_alerts() -> list[dict]:
+    """Alerta de disco SFTP (ruta por defecto) si supera el umbral. Sin SFTP configurado → []."""
+    from store import get_sftp  # import perezoso: SFTP es opcional
+    cfg = get_sftp()
+    if not cfg["host"]:
+        return []
+    from sftp import service as sftp_service
+    path = cfg["default_path"] or "/"
+    try:
+        d = sftp_service.disk_usage(path)
+    except Exception:  # noqa: BLE001 — SFTP caído no rompe las alertas de Netezza
+        return []
+    if d.get("error"):
+        return []
+    try:
+        pct = float((d.get("use_percent") or "0").replace("%", ""))
+    except ValueError:
+        return []
+    level = "crit" if pct >= SFTP_CRIT else "warn" if pct >= SFTP_WARN else None
+    if not level:
+        return []
+    msg = f"Disco SFTP {path} al {pct:.0f}% ({d.get('used')}/{d.get('size')})"
+    return [{"level": level, "kind": "sftp_disk", "key": f"sftp:{path}", "path": path,
+             "value": round(pct, 1), "message": msg}]
+
+
+def collect_alerts() -> Any:
+    """Alertas: dataslices saturados + disco SFTP (si está configurado)."""
+    alerts, max_pct = _dataslice_alerts()
+    alerts += _sftp_disk_alerts()
     alerts.sort(key=lambda a: a["value"], reverse=True)
     return {"alerts": alerts, "count": len(alerts), "max_dataslice_pct": round(max_pct, 1)}
 
