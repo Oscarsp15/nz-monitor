@@ -43,6 +43,14 @@ export function ageFromAt(at: number | null | undefined): number | null {
   return Date.now() / 1000 - at
 }
 
+/** Formatea timestamps crudos de Netezza ("2026-06-13 16:51:18.000000") a "2026-06-13 16:51". */
+export function dt(s: string | null | undefined): string {
+  if (!s) return '—'
+  const m = String(s).match(/(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2})?/)
+  if (!m) return String(s)
+  return m[2] ? `${m[1]} ${m[2]}` : m[1]
+}
+
 export type Severity = 'neutral' | 'warn' | 'crit'
 
 /** Umbrales de skew del DESIGN.md §5: <8 neutro · 8–25 warn · >25 crítico. */

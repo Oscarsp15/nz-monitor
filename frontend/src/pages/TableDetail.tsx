@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { KpiCard } from '../components/KpiCard'
 import { api } from '../lib/api'
-import { fixed, gb } from '../lib/format'
+import { dt, fixed, gb } from '../lib/format'
 
 export function TableDetail() {
   const { objid } = useParams()
@@ -39,7 +39,7 @@ export function TableDetail() {
         <h1 className="font-data text-lg text-ink0">{name || `objid ${id}`}</h1>
         {meta && (
           <p className="font-data text-micro text-ink2">
-            {meta.db}.{meta.sch} · owner {meta.owner} · creada {meta.created}
+            {meta.db}.{meta.sch} · owner {meta.owner} · creada {dt(meta.created)}
           </p>
         )}
       </div>
@@ -97,7 +97,7 @@ export function TableDetail() {
           <tbody>
             {(detail.data?.history ?? []).map((h, i) => (
               <tr key={i} className="border-b border-line last:border-0 hover:bg-bg2">
-                <td className="px-3 py-1.5 font-data text-micro text-ink1">{h.tend}</td>
+                <td className="px-3 py-1.5 font-data text-micro text-ink1">{dt(h.tend)}</td>
                 <td className="px-3 py-1.5 font-data text-micro text-ink0">{h.verb}</td>
                 <td className="px-3 py-1.5 font-data text-micro text-ink1">{h.user}</td>
                 <td className="max-w-[420px] truncate px-3 py-1.5 font-data text-micro text-ink2">
