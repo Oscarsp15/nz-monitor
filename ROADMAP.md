@@ -3,9 +3,12 @@
 No reescribir todo de golpe. Migrar el `nz-monitor` actual por fases, midiendo el alivio de carga
 en Netezza en cada paso. Cada fase es desplegable por sí sola.
 
-> **Estado:** Fase 1 ✅ (caché servidor) · Fase 2 ✅ (recolector + snapshots SQLite + cache/EventBus
-> enchufables) · Fase 3 🟡 (`?fresh=true` "Actualizar ahora" listo; falta toggle "modo en vivo" UI) ·
-> Fase 4 ⏳ (SSE) · Fase 5 ⏳ (Redis). Frontend (React/PWA) pendiente — ver nota abajo.
+> **Estado (v2.15):** Fase 1 ✅ · Fase 2 ✅ · Fase 3 ✅ (`?fresh=true` + modo en vivo) ·
+> Frontend React/PWA ✅ (nav por niveles: bottom nav móvil + sidebar desktop) · Vistas: Resumen
+> (dashboard con tendencias + disco SFTP), Tablas/Owners/Dataslices con drill-down ds→tablas→detalle,
+> Alertas, Asistente (chat IA), Ajustes · Alertas (dataslice + disco SFTP) por snapshot + **Telegram
+> push** con **IA (Groq)** y **asistente conversacional** (tool-calling) · **SFTP** (disco + archivos
+> viejos) · Config 100% por la web (cifrada). **Pendiente:** Fase 4 SSE · Auth · Fase 5 Redis.
 
 ## Fase 0 — Medir (antes de tocar nada)
 - Instrumentar: contar queries/seg a Netezza y latencia por endpoint.
