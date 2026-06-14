@@ -7,10 +7,14 @@ import json
 import logging
 import urllib.parse
 import urllib.request
+from datetime import UTC, datetime
 
-from store import get_telegram
+from store import get_setting, get_telegram, set_setting
 
 log = logging.getLogger("collector")
+
+# recordatorio de un crítico que persiste (minutos) — además del aviso al entrar en crítico
+REMIND_AFTER_MIN = 360
 
 
 def configured() -> bool:
@@ -38,18 +42,41 @@ def send(text: str) -> bool:
         return False
 
 
-def notify_alerts(prev: dict | None, payload: dict | None) -> None:
-    """Avisa SOLO de dataslices que ENTRAN en crítico (no en cada ciclo → sin spam)."""
+def _minutes_since(iso: str | None) -> float:
+    if not iso:
+        return 1e9
+    try:
+        return (datetime.now(UTC) - datetime.fromisoformat(iso)).total_seconds() / 60
+    except ValueError:
+        return 1e9
+
+
+def notify_alerts(payload: dict | None) -> None:
+    """Notifica dataslices críticos. Estado 'ya avisados' en la BD (no en el snapshot):
+
+    - avisa cuando un dataslice ENTRA en crítico (nuevo respecto a lo ya avisado),
+    - reenvía un recordatorio si un crítico PERSISTE más de REMIND_AFTER_MIN,
+    - avisa "resuelto" cuando ya no hay críticos.
+    Así, al configurar Telegram con críticos ya activos, llegan en el siguiente ciclo.
+    """
     if not configured() or not payload:
         return
-    prev_data = (prev or {}).get("data") or {}
-    prev_crit = {a.get("ds") for a in prev_data.get("alerts", []) if a.get("level") == "crit"}
-    new_crit = [a for a in payload.get("alerts", [])
-                if a.get("level") == "crit" and a.get("ds") not in prev_crit]
-    if not new_crit:
-        return
-    lines = "\n".join(f"🔴 {a['message']}" for a in new_crit)
-    text = (f"<b>nz-monitor — alerta</b>\n{lines}\n"
-            f"<i>saturación máx. {payload.get('max_dataslice_pct')}% · "
-            f"{payload.get('count')} alerta(s) activas</i>")
-    send(text)
+    crit_alerts = [a for a in payload.get("alerts", [])
+                   if a.get("level") == "crit" and a.get("ds") is not None]
+    crit = sorted({a["ds"] for a in crit_alerts})
+    notified = set(json.loads(get_setting("telegram_notified_crit") or "[]"))
+    is_new = any(d not in notified for d in crit)
+    mins = _minutes_since(get_setting("telegram_last_notify"))
+    is_remind = bool(crit) and mins >= REMIND_AFTER_MIN
+
+    if crit and (is_new or is_remind):
+        lines = "\n".join(f"🔴 {a['message']}" for a in crit_alerts)
+        prefix = "" if is_new else "(recordatorio) "
+        send(f"<b>nz-monitor — {prefix}dataslices críticos</b>\n{lines}\n"
+             f"<i>saturación máx. {payload.get('max_dataslice_pct')}%</i>")
+        set_setting("telegram_notified_crit", json.dumps(crit))
+        set_setting("telegram_last_notify", datetime.now(UTC).isoformat())
+    elif not crit and notified:  # se resolvió todo
+        send("✅ nz-monitor: sin dataslices críticos.")
+        set_setting("telegram_notified_crit", "[]")
+        set_setting("telegram_last_notify", datetime.now(UTC).isoformat())
