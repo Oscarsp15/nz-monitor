@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import { Layout } from './components/Layout'
 import { Alerts } from './pages/Alerts'
+import { DataslicePage } from './pages/DataslicePage'
 import { Dataslices } from './pages/Dataslices'
 import { Overview } from './pages/Overview'
 import { Owners } from './pages/Owners'
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
       { index: true, element: <Overview /> },
       { path: 'tablas', element: <Tables /> },
       { path: 'dataslices', element: <Dataslices /> },
+      { path: 'dataslice/:id', element: <DataslicePage /> },
       { path: 'owners', element: <Owners /> },
       { path: 'alertas', element: <Alerts /> },
       { path: 'tabla/:objid', element: <TableDetail /> },

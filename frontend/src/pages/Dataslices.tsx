@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRef } from 'react'
 
+import { useNavigate } from 'react-router-dom'
+
 import { ExportButton } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
@@ -18,6 +20,7 @@ function barColor(pct: number): string {
 }
 
 export function Dataslices() {
+  const navigate = useNavigate()
   const freshRef = useRef(false)
   const q = useQuery({
     queryKey: ['dataslices'],
@@ -101,7 +104,11 @@ export function Dataslices() {
               </tr>
             )}
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-line last:border-0 hover:bg-bg2">
+              <tr
+                key={r.id}
+                onClick={() => navigate(`/dataslice/${r.id}`)}
+                className="cursor-pointer border-b border-line last:border-0 hover:bg-bg2"
+              >
                 <td className="px-3 py-1.5 font-data text-body text-ink0">ds {r.id}</td>
                 <td className="num px-3 py-1.5 text-body text-ink1">{gb(r.gb_used)}</td>
                 <td className="num px-3 py-1.5 text-body text-ink1">{gb(r.gb_size)}</td>

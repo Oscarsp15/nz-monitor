@@ -50,10 +50,12 @@ def collect_alerts() -> Any:
             continue
         max_pct = max(max_pct, pct)
         if pct >= DS_CRIT:
-            alerts.append({"level": "crit", "kind": "dataslice", "value": round(pct, 1),
+            alerts.append({"level": "crit", "kind": "dataslice", "ds": int(r["ds_id"]),
+                           "value": round(pct, 1),
                            "message": f"Dataslice {r['ds_id']} saturado al {pct:.0f}%"})
         elif pct >= DS_WARN:
-            alerts.append({"level": "warn", "kind": "dataslice", "value": round(pct, 1),
+            alerts.append({"level": "warn", "kind": "dataslice", "ds": int(r["ds_id"]),
+                           "value": round(pct, 1),
                            "message": f"Dataslice {r['ds_id']} al {pct:.0f}%"})
     alerts.sort(key=lambda a: a["value"], reverse=True)
     return {"alerts": alerts, "count": len(alerts), "max_dataslice_pct": round(max_pct, 1)}

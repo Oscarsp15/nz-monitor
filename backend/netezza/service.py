@@ -177,3 +177,22 @@ def table_detail(objid: int, table: str):
 def table_slices(objid: int):
     rows = run(q.table_slices(objid))
     return {"slices": [{"ds": int(r["dsid"]), "gb": float(r["gb"])} for r in rows]}
+
+
+def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False):
+    """Tablas que ocupan un dataslice (las de skew alto son candidatas a redistribuir)."""
+    dsid = dsid if 0 < dsid < 100000 else 1
+    page = max(0, page)
+
+    def produce():
+        rows = run(q.tables_on_dataslice(dsid, page * q.PAGE))
+        has_next = len(rows) > q.PAGE
+        rows = rows[: q.PAGE]
+        norm = [{"db": r.get("dbname"), "schema": r.get("schema"), "table": r.get("tablename"),
+                 "owner": r.get("owner"), "objid": int(r.get("objid") or 0),
+                 "skew": float(r.get("skew") or 0), "gb_ds": float(r.get("gb_ds") or 0),
+                 "gb_total": float(r.get("gb_total") or 0)} for r in rows]
+        return {"rows": norm, "has_next": has_next}
+
+    val, at, cached = _cached(("dsx", dsid, page), S.tables_ttl, produce, fresh)
+    return {**val, "ds": dsid, "page": page, "at": at, "from_cache": cached}
