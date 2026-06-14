@@ -107,13 +107,8 @@ SYSTEM = (
 )
 
 
-def run_agent(user_text: str, replied: str | None = None, max_steps: int = 5) -> str | None:
-    messages: list[dict] = [{"role": "system", "content": SYSTEM}]
-    if replied:
-        messages.append({"role": "system",
-                         "content": f'El usuario responde a esta alerta: "{replied}"'})
-    messages.append({"role": "user", "content": user_text})
-
+def _loop(messages: list[dict], max_steps: int = 5) -> str | None:
+    """Bucle de razonamiento: pide al modelo, ejecuta tools que pida, repite hasta la respuesta."""
     for _ in range(max_steps):
         m = ai.chat(messages, tools=TOOLS)
         if m is None:
@@ -136,6 +131,24 @@ def run_agent(user_text: str, replied: str | None = None, max_steps: int = 5) ->
                 log.warning("[agent] tool %s: %s", name, e)
             messages.append({"role": "tool", "tool_call_id": tc.get("id"), "name": name,
                              "content": json.dumps(result, default=str)[:3500]})
-    # se agotaron los pasos: respuesta final sin herramientas
-    m = ai.chat(messages)
+    m = ai.chat(messages)  # se agotaron los pasos: respuesta final sin tools
     return (m or {}).get("content")
+
+
+def run_agent(user_text: str, replied: str | None = None) -> str | None:
+    """Una sola pregunta (Telegram)."""
+    messages: list[dict] = [{"role": "system", "content": SYSTEM}]
+    if replied:
+        messages.append({"role": "system",
+                         "content": f'El usuario responde a esta alerta: "{replied}"'})
+    messages.append({"role": "user", "content": user_text})
+    return _loop(messages)
+
+
+def run_chat(turns: list[dict]) -> str | None:
+    """Chat con historial (web). `turns` = [{role: user|assistant, content}]."""
+    messages: list[dict] = [{"role": "system", "content": SYSTEM}]
+    for t in turns[-12:]:
+        if t.get("role") in ("user", "assistant") and t.get("content"):
+            messages.append({"role": t["role"], "content": str(t["content"])})
+    return _loop(messages)

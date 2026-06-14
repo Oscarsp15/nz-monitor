@@ -169,6 +169,8 @@ export const api = {
   saveAi: (b: { api_key?: string; model?: string; enabled?: boolean; assistant?: boolean }) =>
     mutate<AiCfg>('PUT', '/settings/ai', b),
   testAi: () => mutate<{ ok: boolean; sample: string | null }>('POST', '/settings/ai/test'),
+  aiChat: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
+    mutate<{ answer: string | null; error?: string }>('POST', '/ai/chat', { messages }),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
   dbSummary: (db: string, fresh = false) =>
     get<{ table_count: number; total_gb: number; skewed: number; database: string | null } & Freshness>(
