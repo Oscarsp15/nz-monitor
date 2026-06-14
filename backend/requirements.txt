@@ -1,0 +1,23 @@
+# API
+fastapi==0.115.*
+uvicorn[standard]==0.32.*
+pydantic==2.*
+pydantic-settings==2.*
+
+# Netezza: conector 100% Python (sin Java ni driver ODBC)
+nzpy==1.15.*
+
+# Base local + auth
+SQLAlchemy==2.*
+passlib[bcrypt]==1.7.*
+python-jose[cryptography]==3.*
+cryptography==43.*
+
+# Recolector y caché
+APScheduler==3.10.*
+cachetools==5.*
+
+# SFTP
+paramiko==3.*
+
+# Dev/calidad (ver pyproject.toml): ruff, black, mypy, pytest

@@ -1,0 +1,40 @@
+[project]
+name = "nz-monitor"
+version = "2.0.0"
+description = "Observabilidad para Netezza (recolector + API + realtime)"
+requires-python = ">=3.12"
+
+# Dependencias reales van en backend/requirements.txt (o muévelas aquí con tu gestor).
+# Este archivo centraliza la config de herramientas de calidad.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["backend", "collector"]
+
+[tool.ruff.lint]
+# E/F=pyflakes, I=isort, B=bugbear, UP=pyupgrade, S=bandit(seguridad), ASYNC, SIM
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC", "SIM"]
+ignore = ["S101"]  # assert permitido en tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]  # credenciales dummy en tests
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+warn_return_any = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+exclude = ["tests/"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers"
+testpaths = ["tests"]
+markers = [
+  "live: tests que tocan Netezza real (saltar en CI por defecto)",
+]
