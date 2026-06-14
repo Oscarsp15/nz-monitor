@@ -23,6 +23,8 @@ export function Overview() {
   const totalTables = dbs.reduce((a, d) => a + d.table_count, 0)
   const maxPct = Math.max(0, ...(ds.data?.rows ?? []).map((r) => r.pct))
   const alertCount = alertsQ.data?.data?.alerts?.length ?? 0
+  const sftp = alertsQ.data?.data?.sftp
+  const sftpColor = !sftp ? 'var(--ink-2)' : sftp.pct >= 90 ? 'var(--crit)' : sftp.pct >= 85 ? 'var(--warn)' : 'var(--ok)'
 
   const spacePts = histSpace.data?.points ?? []
   const spaceVals = spacePts.map((p) => p.total_gb)
@@ -52,10 +54,19 @@ export function Overview() {
         <PageSkeleton kpis={5} panels={2} />
       ) : (
       <div className="reveal space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <KpiCard label="Espacio total" value={gb(totalGb)} />
         <KpiCard label="Tablas" value={int(totalTables)} />
         <KpiCard label="Bases" value={int(dbs.length)} />
+        {sftp && (
+          <button onClick={() => navigate('/sftp/disco')} className="panel px-4 py-3 text-left">
+            <div className="th">Disco SFTP</div>
+            <div className="mt-1 font-data kpi-value" style={{ color: sftpColor }}>
+              {sftp.pct}%
+            </div>
+            <div className="mt-0.5 truncate font-data text-micro text-ink2">{sftp.path}</div>
+          </button>
+        )}
         <button onClick={() => navigate('/alertas')} className="panel px-4 py-3 text-left">
           <div className="th">Alertas</div>
           <div
