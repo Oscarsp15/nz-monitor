@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 import notify
+from auth.security import hash_password
 from sftp import service as sftp_service
 from store import (
     get_groq,
@@ -111,3 +112,31 @@ def sftp_put(body: SftpIn):
 @router.post("/sftp/test")
 def sftp_test():
     return sftp_service.health()
+
+
+# ─── Login (opcional) ───
+class AuthIn(BaseModel):
+    username: str | None = None
+    password: str | None = None
+    disable: bool | None = None
+
+
+def _auth_state() -> dict:
+    return {"configured": bool(get_setting("auth_user") and get_setting("auth_pass_hash")),
+            "user": get_setting("auth_user") or ""}
+
+
+@router.get("/auth")
+def auth_get():
+    return _auth_state()
+
+
+@router.put("/auth")
+def auth_put(body: AuthIn):
+    if body.disable:
+        set_setting("auth_user", "")
+        set_setting("auth_pass_hash", "")
+    elif body.username and body.password:
+        set_setting("auth_user", body.username)
+        set_setting("auth_pass_hash", hash_password(body.password))
+    return _auth_state()
