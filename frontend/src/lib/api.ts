@@ -79,8 +79,20 @@ export interface SpaceByDb {
 export interface AlertItem {
   level: 'warn' | 'crit'
   kind: string
+  ds?: number
   value: number
   message: string
+}
+
+export interface DsTableRow {
+  db: string | null
+  schema: string | null
+  table: string | null
+  owner: string | null
+  objid: number
+  skew: number
+  gb_ds: number
+  gb_total: number
 }
 
 export interface AlertsData {
@@ -134,6 +146,11 @@ export const api = {
     get<TableDetailResp>('/table', { objid, table }),
   tableSlices: (objid: number) =>
     get<{ slices: { ds: number; gb: number }[] }>('/table/slices', { objid }),
+  datasliceTables: (p: { ds: number; page: number; fresh?: boolean }) =>
+    get<{ rows: DsTableRow[]; has_next: boolean; ds: number; page: number } & Freshness>(
+      '/dataslice/tables',
+      { ds: p.ds, page: p.page, fresh: p.fresh ?? false },
+    ),
   monitoringSpace: () => get<Snapshot<SpaceByDb>>('/monitoring/space'),
   monitoringHealth: () => get<Snapshot<unknown>>('/monitoring/health'),
   monitoringAlerts: () => get<Snapshot<AlertsData>>('/monitoring/alerts'),

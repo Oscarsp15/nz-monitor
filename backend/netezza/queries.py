@@ -77,6 +77,22 @@ def tables(db: str | None, order: str, offset: int, search: str | None = None) -
     """
 
 
+def tables_on_dataslice(dsid: int, offset: int = 0) -> str:
+    # Tablas que ocupan UN dataslice, por GB en ese slice (validado vs Netezza). Las de skew alto
+    # son las candidatas a redistribuir/GROOM. Escanea solo dsid (1/Ndataslices de las filas).
+    return f"""
+      SELECT a.database AS dbname, a.schema AS schema, a.objname AS tablename, a.owner AS owner,
+        a.objid AS objid, ROUND(s.skew,2) AS skew,
+        ROUND(i.used_bytes/1073741824.0,3) AS gb_ds,
+        ROUND(s.used_bytes/1073741824.0,2) AS gb_total
+      FROM _V_SYS_OBJECT_DSLICE_INFO i
+      JOIN _V_OBJ_RELATION_XDB a ON a.objid=i.tblid
+      JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=i.tblid
+      WHERE i.dsid={dsid} AND a.OBJTYPE='TABLE' AND i.used_bytes>0
+      ORDER BY i.used_bytes DESC LIMIT {PAGE + 1} OFFSET {offset}
+    """
+
+
 def dist_expr() -> str:
     return ("TRIM(BOTH ',' FROM "
             "COALESCE(MAX(CASE WHEN distseqno=1 THEN attname END),'')||','||"

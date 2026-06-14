@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ChevronRight, ShieldCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
@@ -8,11 +9,14 @@ import { api, type AlertItem } from '../lib/api'
 
 const COLOR = { warn: 'var(--warn)', crit: 'var(--crit)' } as const
 
-function Row({ a }: { a: AlertItem }) {
+function Row({ a, onClick }: { a: AlertItem; onClick?: () => void }) {
   const c = COLOR[a.level]
   return (
     <div
-      className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-0"
+      onClick={onClick}
+      className={`flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-0 ${
+        onClick ? 'cursor-pointer hover:bg-bg2' : ''
+      }`}
       style={{ borderLeft: `2px solid ${c}` }}
     >
       <AlertTriangle size={15} strokeWidth={1.8} style={{ color: c }} />
@@ -20,11 +24,13 @@ function Row({ a }: { a: AlertItem }) {
       <span className="num text-body" style={{ color: c }}>
         {a.value}%
       </span>
+      {onClick && <ChevronRight size={14} className="text-ink2" />}
     </div>
   )
 }
 
 export function Alerts() {
+  const navigate = useNavigate()
   const q = useQuery({ queryKey: ['mon', 'alerts'], queryFn: api.monitoringAlerts })
   const histSat = useQuery({ queryKey: ['hist', 'sat'], queryFn: api.historySaturation })
   const data = q.data?.data
@@ -82,7 +88,7 @@ export function Alerts() {
             <h2 className="th">{alerts.length} alerta{alerts.length === 1 ? '' : 's'} activas</h2>
           </div>
           {alerts.map((a, i) => (
-            <Row key={i} a={a} />
+            <Row key={i} a={a} onClick={a.ds ? () => navigate(`/dataslice/${a.ds}`) : undefined} />
           ))}
         </section>
       )}
