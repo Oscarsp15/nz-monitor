@@ -26,3 +26,14 @@ def test_latest_vacio_devuelve_none(tmp_db):
     from store import latest_snapshot
 
     assert latest_snapshot("inexistente") is None
+
+
+def test_snapshot_history_ascendente(tmp_db):
+    from store import save_snapshot, snapshot_history
+
+    t0 = datetime.now(UTC)
+    save_snapshot("space_overview", {"v": 1}, collected_at=t0 - timedelta(minutes=10))
+    save_snapshot("space_overview", {"v": 2}, collected_at=t0 - timedelta(minutes=5))
+    save_snapshot("space_overview", {"v": 3}, collected_at=t0)
+    hist = snapshot_history("space_overview")
+    assert [h["data"]["v"] for h in hist] == [1, 2, 3]  # ascendente

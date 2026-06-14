@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
 import { StatusPill } from '../components/StatusPill'
+import { TrendPanel } from '../components/TrendChart'
 import { api } from '../lib/api'
 import { gb, int } from '../lib/format'
 
@@ -13,12 +14,21 @@ export function Overview() {
   const health = useQuery({ queryKey: ['mon', 'health'], queryFn: api.monitoringHealth })
   const alertsQ = useQuery({ queryKey: ['mon', 'alerts'], queryFn: api.monitoringAlerts })
   const ds = useQuery({ queryKey: ['dataslices'], queryFn: () => api.dataslices() })
+  const histSpace = useQuery({ queryKey: ['hist', 'space'], queryFn: api.historySpace })
+  const histSat = useQuery({ queryKey: ['hist', 'sat'], queryFn: api.historySaturation })
 
   const dbs = space.data?.data?.databases ?? []
   const totalGb = dbs.reduce((a, d) => a + d.gb, 0)
   const totalTables = dbs.reduce((a, d) => a + d.table_count, 0)
   const maxPct = Math.max(0, ...(ds.data?.rows ?? []).map((r) => r.pct))
   const alertCount = alertsQ.data?.data?.alerts?.length ?? 0
+
+  const spacePts = histSpace.data?.points ?? []
+  const spaceVals = spacePts.map((p) => p.total_gb)
+  const satPts = histSat.data?.points ?? []
+  const satVals = satPts.map((p) => p.max_pct)
+  const satLast = satVals[satVals.length - 1] ?? 0
+  const satColor = satLast >= 95 ? 'var(--crit)' : satLast >= 90 ? 'var(--warn)' : 'var(--live)'
 
   return (
     <div className="space-y-5">
@@ -53,6 +63,31 @@ export function Overview() {
           </div>
           <div className="mt-1 font-data text-micro text-ink2">vigilancia pasiva</div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <TrendPanel
+          label="Espacio total · tendencia"
+          current={gb(spaceVals[spaceVals.length - 1] ?? totalGb)}
+          values={spaceVals}
+          color="var(--info)"
+          footer={
+            spaceVals.length >= 2
+              ? `${spaceVals.length} muestras · min ${gb(Math.min(...spaceVals))} · máx ${gb(Math.max(...spaceVals))}`
+              : 'se llena conforme el recolector toma muestras'
+          }
+        />
+        <TrendPanel
+          label="Saturación máx. dataslice · tendencia"
+          current={satVals.length ? `${satLast.toFixed(1)}%` : '—'}
+          values={satVals}
+          color={satColor}
+          footer={
+            satVals.length >= 2
+              ? `${satVals.length} muestras · min ${Math.min(...satVals).toFixed(1)}% · máx ${Math.max(...satVals).toFixed(1)}%`
+              : 'se llena conforme el recolector toma muestras'
+          }
+        />
       </div>
 
       {space.data?.status === 'empty' ? (

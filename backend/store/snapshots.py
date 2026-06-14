@@ -81,6 +81,23 @@ def save_snapshot(
     return ts
 
 
+def snapshot_history(
+    metric_type: str,
+    limit: int = 50,
+    db_path: Path | None = None,
+) -> list[dict]:
+    """Serie temporal: snapshots 'ok' de un tipo, ascendente por fecha (para gráficos)."""
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT payload_json, collected_at FROM metric_snapshot "
+            "WHERE metric_type=? AND status='ok' ORDER BY collected_at DESC LIMIT ?",
+            (metric_type, limit),
+        ).fetchall()
+    out = [{"data": json.loads(r["payload_json"]), "collected_at": r["collected_at"]} for r in rows]
+    out.reverse()  # ascendente (más viejo → más nuevo)
+    return out
+
+
 def latest_snapshot(
     metric_type: str,
     credential_id: int | None = None,

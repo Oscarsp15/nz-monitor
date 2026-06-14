@@ -132,4 +132,10 @@ export const api = {
   monitoringSpace: () => get<Snapshot<SpaceByDb>>('/monitoring/space'),
   monitoringHealth: () => get<Snapshot<unknown>>('/monitoring/health'),
   monitoringAlerts: () => get<Snapshot<AlertsData>>('/monitoring/alerts'),
+  historySpace: () =>
+    get<{ points: { at: string; total_gb: number; tables: number }[] }>('/monitoring/history/space'),
+  historySaturation: () =>
+    get<{ points: { at: string; max_pct: number; alerts: number }[] }>(
+      '/monitoring/history/saturation',
+    ),
 }
