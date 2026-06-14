@@ -177,3 +177,31 @@ Principios derivados:
 - [ ] ¿Las queries tienen timeout?
 - [ ] ¿Datos de investigación se sirven **en vivo**, no cacheados?
 - [ ] ¿Endpoints con auth y entrada validada?
+
+---
+
+## 12. UX — lecciones del prototipo (obligatorias)
+
+Validadas construyendo el demo con datos reales. Aplicarlas en el producto.
+
+- **Carga atómica en cambios de contexto.** Al cambiar base / orden / dataslice, traer todo lo
+  dependiente con un solo `Promise.all` y **pintar junto**. Nunca actualizaciones escalonadas
+  (espacio primero, tabla después) → se ven desordenadas. Atenuar mientras carga.
+- **Feedback instantáneo.** Las selecciones (p. ej. elegir un dataslice) deben reflejarse en la UI
+  **al instante**, antes de que vuelva la consulta. Nada de "primero busca y luego resalta".
+- **Lenguaje llano (sin jerga interna).** En la UI: nada de *snapshot, caché, recolector, pasivo/en vivo*.
+  Sí se usan términos del **dominio** que el DBA conoce (skew, distribución, dataslice). Ver [[design]].
+- **Tema claro + oscuro**, recordando la elección y respetando el del sistema.
+- **Móvil / PWA**: respetar el área segura (notch/status bar), pintar el `html` con el color del tema
+  (overscroll), e instalable (manifest + iconos). Probar en celular real.
+- **Tablas densas**: ordenar por **clic en el encabezado** (lo intuitivo), **paginación**, columnas
+  Base/Owner. Ahí es donde brilla el framework (TanStack Table) — no reinventarlo a mano.
+- **Investigación on-demand**: el detalle de una tabla (última acción, dataslices que ocupa) va en una
+  **vista aparte con "← Volver"**, y consulta puntual al abrir (no en bloque para todas las filas).
+
+## 13. Datos / queries de Netezza
+
+Las vistas del sistema, las **queries probadas** (resumen, tablas+skew+distribución, uso por dataslice,
+carga por tabla por dataslice, última acción) y los **gotchas** están en **[NETEZZA.md](NETEZZA.md)**.
+Reusar de ahí; no reinventar SQL. El reporte batch completo está en el DAG
+`reporte_distribucion_tablas.py` (Airflow/WSL).
