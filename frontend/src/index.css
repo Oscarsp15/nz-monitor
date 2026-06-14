@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Tokens del DESIGN.md ─── */
+:root,
+[data-theme='dark'] {
+  --bg-0: #0a0c10;
+  --bg-1: #0f131a;
+  --bg-2: #151a23;
+  --line: #1f2630;
+  --line-strong: #2b3340;
+  --ink-0: #e7eaf0;
+  --ink-1: #9ba6b4;
+  --ink-2: #5e6878;
+  --ok: #3fb950;
+  --warn: #d8a23a;
+  --crit: #e5484d;
+  --info: #5ba2c9;
+  --live: #36e0c5;
+}
+
+/* Tema claro: papel + tinta, mismos semánticos con más contraste */
+[data-theme='light'] {
+  --bg-0: #f4f6f8;
+  --bg-1: #ffffff;
+  --bg-2: #eceff3;
+  --line: #e1e5ea;
+  --line-strong: #cbd1d9;
+  --ink-0: #161b22;
+  --ink-1: #4a5460;
+  --ink-2: #828c99;
+  --ok: #2e9e40;
+  --warn: #b5791f;
+  --crit: #ce3438;
+  --info: #2c7ca8;
+  --live: #0fb9a0;
+}
+
+@layer base {
+  html {
+    background: var(--bg-0); /* pinta overscroll del color del tema (AGENTS §12) */
+  }
+  body {
+    @apply bg-bg0 text-ink0 font-ui antialiased;
+    /* área segura del notch en PWA móvil */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+  /* Toda cifra: monoespaciada, tabular, a la derecha */
+  .num {
+    @apply font-data tabular-nums text-right;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-bg1 border border-line rounded;
+    box-shadow: inset 0 1px 0 #ffffff0a; /* top-highlight 1px */
+  }
+  .th {
+    @apply font-dense uppercase tracking-wide text-micro text-ink1 text-left font-medium;
+  }
+}
+
+/* Foco accesible en --live */
+:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 1px;
+}
+
+/* Pulso de "modo en vivo" (DESIGN §6) */
+@keyframes pulse-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse-live {
+  animation: pulse-live 1.6s ease-in-out infinite;
+}
+
+/* Flash de celda al cambiar un valor (modo en vivo) */
+@keyframes flash-down {
+  from {
+    background: color-mix(in srgb, var(--ok) 35%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+@keyframes flash-up {
+  from {
+    background: color-mix(in srgb, var(--crit) 35%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+.flash-down {
+  animation: flash-down 0.6s ease-out;
+}
+.flash-up {
+  animation: flash-up 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-live,
+  .flash-down,
+  .flash-up {
+    animation: none;
+  }
+}

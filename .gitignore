@@ -25,6 +25,7 @@ venv/
 # ─── Node / frontend ───
 node_modules/
 dist/
+dev-dist/
 .vite/
 
 # ─── Lanzadores locales (rutas/secretos locales) y capturas ───
