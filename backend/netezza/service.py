@@ -181,13 +181,14 @@ def table_slices(objid: int):
             "occupied": int(occ[0]["n"] or 0) if occ else len(rows)}
 
 
-def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False):
+def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False, order: str = "ds"):
     """Tablas que ocupan un dataslice (las de skew alto son candidatas a redistribuir)."""
     dsid = dsid if 0 < dsid < 100000 else 1
     page = max(0, page)
+    order = order if order in q.ORDER_COL_DS else "ds"
 
     def produce():
-        rows = run(q.tables_on_dataslice(dsid, page * q.PAGE))
+        rows = run(q.tables_on_dataslice(dsid, page * q.PAGE, order))
         has_next = len(rows) > q.PAGE
         rows = rows[: q.PAGE]
         norm = [{"db": r.get("dbname"), "schema": r.get("schema"), "table": r.get("tablename"),
@@ -196,8 +197,8 @@ def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False):
                  "gb_total": float(r.get("gb_total") or 0)} for r in rows]
         return {"rows": norm, "has_next": has_next}
 
-    val, at, cached = _cached(("dsx", dsid, page), S.tables_ttl, produce, fresh)
-    return {**val, "ds": dsid, "page": page, "at": at, "from_cache": cached}
+    val, at, cached = _cached(("dsx", dsid, page, order), S.tables_ttl, produce, fresh)
+    return {**val, "ds": dsid, "page": page, "order": order, "at": at, "from_cache": cached}
 
 
 def dataslice_summary(dsid: int, fresh: bool = False):

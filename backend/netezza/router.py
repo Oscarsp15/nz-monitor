@@ -55,8 +55,8 @@ def table_slices(objid: int):
 
 
 @router.get("/dataslice/tables")
-def dataslice_tables(ds: int, page: int = 0, fresh: bool = False):
-    return service.tables_on_dataslice(ds, page, fresh)
+def dataslice_tables(ds: int, page: int = 0, fresh: bool = False, order: str = "ds"):
+    return service.tables_on_dataslice(ds, page, fresh, order)
 
 
 @router.get("/dataslice/summary")
