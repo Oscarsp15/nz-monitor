@@ -19,6 +19,11 @@ log = logging.getLogger("collector")
 REMIND_AFTER_MIN = 360
 
 
+def _esc(s: str) -> str:
+    """Escapa para parse_mode HTML de Telegram."""
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 def configured() -> bool:
     token, chat = get_telegram()
     return bool(token and chat)
@@ -72,18 +77,20 @@ def notify_alerts(payload: dict | None) -> None:
     is_remind = bool(crit) and mins >= REMIND_AFTER_MIN
 
     if crit and (is_new or is_remind):
-        lines = "\n".join(f"🔴 {a['message']}" for a in crit_alerts)
-        prefix = "" if is_new else "(recordatorio) "
-        text = (f"<b>nz-monitor — {prefix}dataslices críticos</b>\n{lines}\n"
-                f"<i>saturación máx. {payload.get('max_dataslice_pct')}%</i>")
+        title = "🔁 <b>nz-monitor · recordatorio</b>" if (is_remind and not is_new) else \
+                "🔴 <b>nz-monitor · alerta crítica</b>"
+        lines = "\n".join(f"   • {_esc(a['message'])}" for a in crit_alerts)
+        text = (f"{title}\n<b>Dataslices casi llenos:</b>\n{lines}\n"
+                f"<i>saturación máx. {payload.get('max_dataslice_pct')}% · "
+                f"{payload.get('count')} alerta(s) activas</i>")
         if ai.enabled():  # análisis IA opcional (Groq): qué tablas y qué hacer
             extra = ai.alert_analysis(crit_alerts)
             if extra:
-                text += f"\n\n🤖 {extra}"
+                text += f"\n\n🤖 <b>Recomendación IA</b>\n{_esc(extra)}"
         send(text)
         set_setting("telegram_notified_crit", json.dumps(crit))
         set_setting("telegram_last_notify", datetime.now(UTC).isoformat())
     elif not crit and notified:  # se resolvió todo
-        send("✅ nz-monitor: sin dataslices críticos.")
+        send("✅ <b>nz-monitor</b> · sin dataslices críticos. Clúster estable.")
         set_setting("telegram_notified_crit", "[]")
         set_setting("telegram_last_notify", datetime.now(UTC).isoformat())

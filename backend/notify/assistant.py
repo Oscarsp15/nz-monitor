@@ -37,7 +37,8 @@ def _api(method: str, params: dict, timeout: int = 40):
 
 
 def _send(chat_id: str, text: str, reply_to: int | None = None) -> None:
-    p = {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": "true"}
+    # texto plano (sin parse_mode): la respuesta del agente es libre y no debe romper formato
+    p = {"chat_id": chat_id, "text": text, "disable_web_page_preview": "true"}
     if reply_to:
         p["reply_to_message_id"] = reply_to
     _api("sendMessage", p, timeout=15)
