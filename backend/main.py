@@ -7,11 +7,13 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from aichat.router import router as aichat_router
+from auth import require_auth
+from auth.router import router as auth_router
 from config import get_settings
 from monitoring.router import router as monitoring_router
 from netezza.router import router as netezza_router
@@ -37,11 +39,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(netezza_router)
-app.include_router(monitoring_router)
-app.include_router(settings_router)
-app.include_router(aichat_router)
-app.include_router(sftp_router)
+app.include_router(auth_router)  # /api/auth/* — sin protección
+# Routers de datos: protegidos si hay login configurado (require_auth permite si no lo hay)
+_protected = [Depends(require_auth)]
+app.include_router(netezza_router, dependencies=_protected)
+app.include_router(monitoring_router, dependencies=_protected)
+app.include_router(settings_router, dependencies=_protected)
+app.include_router(aichat_router, dependencies=_protected)
+app.include_router(sftp_router, dependencies=_protected)
 
 
 @app.get("/health")

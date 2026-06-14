@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StatusPill } from '../components/StatusPill'
-import { api } from '../lib/api'
+import { api, clearToken } from '../lib/api'
 
 export function Settings() {
   const qc = useQueryClient()
@@ -12,6 +12,20 @@ export function Settings() {
 
   const ai = useQuery({ queryKey: ['settings', 'ai'], queryFn: api.getAi })
   const sftp = useQuery({ queryKey: ['settings', 'sftp'], queryFn: api.getSftp })
+  const auth = useQuery({ queryKey: ['settings', 'auth'], queryFn: api.getAuth })
+  const [auser, setAuser] = useState('')
+  const [apass, setApass] = useState('')
+  const saveAuth = useMutation({
+    mutationFn: () => api.saveAuth({ username: auser, password: apass }),
+    onSuccess: () => {
+      setApass('')
+      qc.invalidateQueries({ queryKey: ['settings', 'auth'] })
+    },
+  })
+  const disableAuth = useMutation({
+    mutationFn: () => api.saveAuth({ disable: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', 'auth'] }),
+  })
 
   const [chatId, setChatId] = useState('')
   const [token, setToken] = useState('')
@@ -336,6 +350,69 @@ export function Settings() {
             </button>
             {sMsg && <span className="font-data text-micro text-ink1">{sMsg}</span>}
           </div>
+        </div>
+      </section>
+
+      <section className="panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+          <h2 className="th">Seguridad · Login</h2>
+          <StatusPill status={auth.data?.configured ? 'ok' : 'empty'} />
+        </div>
+        <div className="space-y-4 p-4">
+          <p className="text-body text-ink1">
+            <b>Opcional.</b> Si activas login, la app pedirá usuario y contraseña. Sin esto, queda
+            abierta en tu red local.
+          </p>
+          {auth.data?.configured ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-body text-ink1">
+                Login activo · usuario <span className="font-data text-ink0">{auth.data.user}</span>
+              </span>
+              <button
+                onClick={() => {
+                  clearToken()
+                  location.reload()
+                }}
+                className="rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0"
+              >
+                Cerrar sesión
+              </button>
+              <button
+                onClick={() => disableAuth.mutate()}
+                disabled={disableAuth.isPending}
+                className="rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-crit hover:bg-bg2 disabled:opacity-50"
+              >
+                Desactivar login
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="th">Usuario</span>
+                <input
+                  value={auser}
+                  onChange={(e) => setAuser(e.target.value)}
+                  className="w-40 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="th">Contraseña</span>
+                <input
+                  type="password"
+                  value={apass}
+                  onChange={(e) => setApass(e.target.value)}
+                  className="w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
+                />
+              </label>
+              <button
+                onClick={() => saveAuth.mutate()}
+                disabled={saveAuth.isPending || !auser || !apass}
+                className="rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+              >
+                Activar login
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

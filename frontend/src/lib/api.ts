@@ -108,6 +108,23 @@ export interface OwnerRow {
   gb: number
 }
 
+const TOKEN_KEY = 'nzm-token'
+export const getToken = () => localStorage.getItem(TOKEN_KEY)
+export const setToken = (t: string) => localStorage.setItem(TOKEN_KEY, t)
+export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
+
+function authHeaders(): Record<string, string> {
+  const t = getToken()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
+function on401(status: number) {
+  if (status === 401) {
+    clearToken()
+    location.reload() // fuerza la pantalla de login
+  }
+}
+
 async function get<T>(path: string, params?: Record<string, string | number | boolean>): Promise<T> {
   const qs = params
     ? '?' +
@@ -116,8 +133,9 @@ async function get<T>(path: string, params?: Record<string, string | number | bo
         .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
         .join('&')
     : ''
-  const res = await fetch(`/api${path}${qs}`)
+  const res = await fetch(`/api${path}${qs}`, { headers: authHeaders() })
   if (!res.ok) {
+    on401(res.status)
     let detail = res.statusText
     try {
       detail = (await res.json()).detail ?? detail
@@ -132,10 +150,11 @@ async function get<T>(path: string, params?: Record<string, string | number | bo
 async function mutate<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
+    on401(res.status)
     let detail = res.statusText
     try {
       detail = (await res.json()).detail ?? detail
@@ -171,6 +190,12 @@ export interface SftpCfg {
 }
 
 export const api = {
+  authStatus: () => get<{ configured: boolean; authenticated: boolean }>('/auth/status'),
+  login: (username: string, password: string) =>
+    mutate<{ token: string; user: string }>('POST', '/auth/login', { username, password }),
+  getAuth: () => get<{ configured: boolean; user: string }>('/settings/auth'),
+  saveAuth: (b: { username?: string; password?: string; disable?: boolean }) =>
+    mutate<{ configured: boolean; user: string }>('PUT', '/settings/auth', b),
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
   getTelegram: () => get<TelegramCfg>('/settings/telegram'),
   saveTelegram: (b: { bot_token?: string; chat_id?: string }) =>

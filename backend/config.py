@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     secret_key: str = "nz-monitor-dev-secret-change-me"  # noqa: S105 (default de dev; override en .env)
     # api = solo sirve la API (NO arranca el recolector) · collector = proceso único del recolector
     app_role: str = "api"
+    jwt_expire_minutes: int = 480  # duración del token de login
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     # Base local (snapshots, auth, credenciales cifradas). Ver ARCHITECTURE.md §3.
