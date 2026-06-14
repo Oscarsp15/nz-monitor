@@ -151,6 +151,25 @@ def _classify(sql: str) -> str:
     return "OTRO"
 
 
+def _references_table(sql: str, table_upper: str, db_upper: str | None) -> bool:
+    """True si el SQL referencia EXACTAMENTE la tabla (frontera de palabra) y no a otra base.
+
+    Evita falsos positivos del LIKE: 'INSUMOSMODELOSDR_' o '..._NBK_INDUSTRIA' (parecidos) y
+    'PROD_MODELOS.DBO.TABLA' (otra base) cuando miramos la tabla en DESA_MODELOS.
+    """
+    su = (sql or "").upper()
+    tok = re.escape(table_upper)
+    # 1) la tabla debe aparecer como identificador completo (ni prefijada ni sufijada por [A-Z0-9_])
+    if not re.search(rf"(?:^|[^A-Z0-9_]){tok}(?:$|[^A-Z0-9_])", su):
+        return False
+    # 2) si aparece calificada a OTRA base (BASE.[ESQ.]TABLA), descartar
+    if db_upper:
+        for mdb in re.findall(rf"([A-Z0-9_]+)\.(?:[A-Z0-9_]*\.)?{tok}(?:$|[^A-Z0-9_])", su):
+            if mdb and mdb != db_upper and mdb != "DBO":
+                return False
+    return True
+
+
 def table_detail(objid: int, table: str):
     out: dict = {"objid": objid, "table": table}
     try:
@@ -165,10 +184,27 @@ def table_detail(objid: int, table: str):
     except Exception as e:
         out["meta_error"] = str(e)
     tname = re.sub(r"[^A-Za-z0-9_]", "", table or "").upper()
+    meta = out.get("meta") or {}
+    db_safe = re.sub(r"[^A-Za-z0-9_]", "", (meta.get("db") or "")).upper() or None
     try:
-        h = run(q.table_history(tname))
-        out["history"] = [{"tend": str(r["tend"]), "user": r["usr"], "db": r["db"],
-                           "verb": _classify(r["sql"]), "sql": (r["sql"] or "").strip()} for r in h]
+        h = run(q.table_history(tname, db_safe))
+        hist: list[dict] = []
+        seen: set[tuple] = set()
+        for r in h:
+            sql = (r["sql"] or "").strip()
+            if not _references_table(sql, tname, db_safe):  # quita parecidos y otras bases
+                continue
+            verb = _classify(sql)
+            norm = re.sub(r"\s+", " ", sql).strip()
+            dedup = (verb, norm[:120].upper())
+            if dedup in seen:  # colapsa la misma consulta repetida N veces
+                continue
+            seen.add(dedup)
+            hist.append({"tend": str(r["tend"]), "user": r["usr"], "db": r["db"],
+                         "verb": verb, "sql": norm[:300]})
+            if len(hist) >= 15:
+                break
+        out["history"] = hist
     except Exception as e:
         out["history_error"] = str(e)
     return out

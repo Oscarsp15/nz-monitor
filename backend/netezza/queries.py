@@ -142,7 +142,19 @@ def table_slices_occupied(objid: int) -> str:
             f"WHERE tblid={objid} GROUP BY dsid HAVING SUM(used_bytes)>0) t")
 
 
-def table_history(tname_safe: str) -> str:
-    return (f"SELECT QH_TEND AS tend, QH_USER AS usr, QH_DATABASE AS db, SUBSTR(QH_SQL,1,400) AS sql "
-            f"FROM {HIST} WHERE UPPER(QH_SQL) LIKE '%{tname_safe}%' AND QH_USER NOT IN ('ADMIN') "
-            f"ORDER BY QH_TEND DESC LIMIT 15")
+def table_history(tname_safe: str, db_safe: str | None = None) -> str:
+    # Acota a la base de la tabla y excluye consultas de catálogo / del propio nz-monitor.
+    # El filtro fino (frontera de palabra y descarte de otra base) se hace en el service,
+    # porque NZ_QUERY_HISTORY guarda el SQL como texto y el LIKE da falsos positivos.
+    sql = (f"SELECT QH_TEND AS tend, QH_USER AS usr, QH_DATABASE AS db, SUBSTR(QH_SQL,1,1000) AS sql "
+           f"FROM {HIST} WHERE QH_USER NOT IN ('ADMIN') "
+           f"AND UPPER(QH_SQL) NOT LIKE '%HISTDB_SUPPORT%' "
+           f"AND UPPER(QH_SQL) NOT LIKE '%_V_SYS_OBJECT%' "
+           f"AND UPPER(QH_SQL) NOT LIKE '%_V_OBJ_RELATION%' "
+           f"AND UPPER(QH_SQL) NOT LIKE '%_V_DSLICE%' ")
+    if db_safe:
+        sql += (f"AND ((QH_DATABASE='{db_safe}' AND UPPER(QH_SQL) LIKE '%{tname_safe}%') "
+                f"OR UPPER(QH_SQL) LIKE '%{db_safe}.DBO.{tname_safe}%') ")
+    else:
+        sql += f"AND UPPER(QH_SQL) LIKE '%{tname_safe}%' "
+    return sql + "ORDER BY QH_TEND DESC LIMIT 120"
