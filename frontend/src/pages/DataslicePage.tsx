@@ -100,7 +100,7 @@ export function DataslicePage() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="panel px-4 py-3">
           <div className="th">Saturación</div>
-          <div className="mt-1 font-data text-kpi" style={{ color: pctColor }}>
+          <div className="mt-1 font-data kpi-value" style={{ color: pctColor }}>
             {info ? `${pct.toFixed(1)}%` : '—'}
           </div>
         </div>
@@ -113,7 +113,7 @@ export function DataslicePage() {
         <div className="panel px-4 py-3">
           <div className="th">Mal distribuidas</div>
           <div
-            className="mt-1 font-data text-kpi"
+            className="mt-1 font-data kpi-value"
             style={{ color: (sum.data?.skewed ?? 0) > 0 ? 'var(--warn)' : 'var(--ok)' }}
           >
             {sum.isLoading ? '···' : (sum.data?.skewed ?? 0)}

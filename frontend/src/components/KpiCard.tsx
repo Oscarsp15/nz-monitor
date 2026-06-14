@@ -15,7 +15,7 @@ export function KpiCard({
   return (
     <div className="panel px-4 py-3">
       <div className="th">{label}</div>
-      <div className={`mt-1 font-data text-kpi text-ink0 ${loading ? 'opacity-40' : ''}`}>
+      <div className={`mt-1 font-data kpi-value text-ink0 ${loading ? 'opacity-40' : ''}`}>
         {loading ? '···' : value}
         {unit && <span className="ml-1 text-body text-ink2">{unit}</span>}
       </div>

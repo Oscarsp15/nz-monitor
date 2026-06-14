@@ -59,7 +59,7 @@ export function Overview() {
         <button onClick={() => navigate('/alertas')} className="panel px-4 py-3 text-left">
           <div className="th">Alertas</div>
           <div
-            className="mt-1 font-data text-kpi"
+            className="mt-1 font-data kpi-value"
             style={{ color: alertCount ? 'var(--crit)' : 'var(--ok)' }}
           >
             {alertsQ.isLoading ? '···' : alertCount}

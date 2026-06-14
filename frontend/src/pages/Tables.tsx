@@ -120,7 +120,7 @@ export function Tables() {
         <div className="panel px-4 py-3">
           <div className="th">Mal distribuidas</div>
           <div
-            className="mt-1 font-data text-kpi"
+            className="mt-1 font-data kpi-value"
             style={{ color: (summary.data?.skewed ?? 0) > 0 ? 'var(--warn)' : 'var(--ok)' }}
           >
             {summary.isLoading ? '···' : int(summary.data?.skewed)}
