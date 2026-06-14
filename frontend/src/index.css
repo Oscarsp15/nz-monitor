@@ -61,6 +61,17 @@
   .th {
     @apply font-dense uppercase tracking-wide text-micro text-ink1 text-left font-medium;
   }
+  /* Valor de KPI: responsivo (no desborda en cards estrechas de móvil) y sin partirse */
+  .kpi-value {
+    font-size: 1.375rem; /* 22px en móvil */
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+  @media (min-width: 768px) {
+    .kpi-value {
+      font-size: 1.75rem; /* 28px en escritorio */
+    }
+  }
 }
 
 /* Foco accesible en --live */
