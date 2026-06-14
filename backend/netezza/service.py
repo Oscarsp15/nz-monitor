@@ -176,7 +176,9 @@ def table_detail(objid: int, table: str):
 
 def table_slices(objid: int):
     rows = run(q.table_slices(objid))
-    return {"slices": [{"ds": int(r["dsid"]), "gb": float(r["gb"])} for r in rows]}
+    occ = run(q.table_slices_occupied(objid))
+    return {"slices": [{"ds": int(r["dsid"]), "gb": float(r["gb"])} for r in rows],
+            "occupied": int(occ[0]["n"] or 0) if occ else len(rows)}
 
 
 def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False):

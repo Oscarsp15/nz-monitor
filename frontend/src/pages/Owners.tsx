@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { ExportButton, SearchInput } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { RefreshButton } from '../components/RefreshButton'
 import { api, type OwnerRow } from '../lib/api'
 import { exportToExcel, stamp } from '../lib/exportXlsx'
@@ -24,12 +25,14 @@ export function Owners() {
       freshRef.current = false
       return api.owners(db, fresh)
     },
+    placeholderData: keepPreviousData,
   })
   const refreshNow = () => {
     freshRef.current = true
     q.refetch()
   }
 
+  const loading = q.isLoading || dbsQ.isLoading
   const all = q.data?.rows ?? []
   const rows = filter
     ? all.filter((r) => r.owner?.toUpperCase().includes(filter.toUpperCase()))
@@ -63,10 +66,14 @@ export function Owners() {
         </div>
       </div>
 
+      {loading ? (
+        <PageSkeleton kpis={3} />
+      ) : (
+      <div className="reveal space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        <KpiCard label="Owners" value={int(rows.length)} loading={q.isLoading} />
-        <KpiCard label="Tablas" value={int(totalTables)} loading={q.isLoading} />
-        <KpiCard label="Espacio total" value={gb(totalGb)} loading={q.isLoading} />
+        <KpiCard label="Owners" value={int(rows.length)} />
+        <KpiCard label="Tablas" value={int(totalTables)} />
+        <KpiCard label="Espacio total" value={gb(totalGb)} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -133,6 +140,8 @@ export function Owners() {
           </tbody>
         </table>
       </section>
+      </div>
+      )}
     </div>
   )
 }

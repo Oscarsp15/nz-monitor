@@ -145,7 +145,7 @@ export const api = {
   tableDetail: (objid: number, table: string) =>
     get<TableDetailResp>('/table', { objid, table }),
   tableSlices: (objid: number) =>
-    get<{ slices: { ds: number; gb: number }[] }>('/table/slices', { objid }),
+    get<{ slices: { ds: number; gb: number }[]; occupied: number }>('/table/slices', { objid }),
   datasliceTables: (p: { ds: number; page: number; fresh?: boolean }) =>
     get<{ rows: DsTableRow[]; has_next: boolean; ds: number; page: number } & Freshness>(
       '/dataslice/tables',

@@ -131,6 +131,12 @@ def table_slices(objid: int) -> str:
             f"GROUP BY dsid HAVING SUM(used_bytes)>0 ORDER BY gb DESC LIMIT 12")
 
 
+def table_slices_occupied(objid: int) -> str:
+    # nº REAL de dataslices que ocupa la tabla (la lista de barras va capada a 12 por gb).
+    return (f"SELECT COUNT(*) AS n FROM (SELECT dsid FROM _V_SYS_OBJECT_DSLICE_INFO "
+            f"WHERE tblid={objid} GROUP BY dsid HAVING SUM(used_bytes)>0) t")
+
+
 def table_history(tname_safe: str) -> str:
     return (f"SELECT QH_TEND AS tend, QH_USER AS usr, QH_DATABASE AS db, SUBSTR(QH_SQL,1,400) AS sql "
             f"FROM {HIST} WHERE UPPER(QH_SQL) LIKE '%{tname_safe}%' AND QH_USER NOT IN ('ADMIN') "

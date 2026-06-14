@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { ExportButton } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { RefreshButton } from '../components/RefreshButton'
 import { TrendPanel } from '../components/TrendChart'
 import { api, type Dataslice } from '../lib/api'
@@ -35,6 +36,7 @@ export function Dataslices() {
     freshRef.current = true
     q.refetch()
   }
+  const loading = q.isLoading || histSat.isLoading
   const rows = q.data?.rows ?? []
   const maxPct = Math.max(0, ...rows.map((r) => r.pct))
   const avgPct = rows.length ? rows.reduce((a, r) => a + r.pct, 0) / rows.length : 0
@@ -68,11 +70,15 @@ export function Dataslices() {
         </div>
       </div>
 
+      {loading ? (
+        <PageSkeleton kpis={4} panels={2} />
+      ) : (
+      <div className="reveal space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiCard label="Dataslices" value={String(rows.length)} loading={q.isLoading} />
-        <KpiCard label="Saturación máx" value={`${maxPct.toFixed(1)}%`} loading={q.isLoading} />
-        <KpiCard label="Saturación prom" value={`${avgPct.toFixed(1)}%`} loading={q.isLoading} />
-        <KpiCard label="Usado total" value={gb(usedGb)} loading={q.isLoading} />
+        <KpiCard label="Dataslices" value={String(rows.length)} />
+        <KpiCard label="Saturación máx" value={`${maxPct.toFixed(1)}%`} />
+        <KpiCard label="Saturación prom" value={`${avgPct.toFixed(1)}%`} />
+        <KpiCard label="Usado total" value={gb(usedGb)} />
       </div>
 
       <TrendPanel
@@ -141,6 +147,8 @@ export function Dataslices() {
         <p className="font-data text-micro text-ink2">
           Saturación máxima del clúster: <span style={{ color: barColor(maxPct) }}>{maxPct.toFixed(1)}%</span>
         </p>
+      )}
+      </div>
       )}
     </div>
   )
