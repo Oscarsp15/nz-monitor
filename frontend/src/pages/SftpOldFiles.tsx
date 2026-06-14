@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ExportButton } from '../components/SearchInput'
 import { KpiCard } from '../components/KpiCard'
@@ -15,10 +15,15 @@ interface OldFile {
 }
 
 export function SftpOldFiles() {
+  const cfg = useQuery({ queryKey: ['settings', 'sftp'], queryFn: api.getSftp })
   const [path, setPath] = useState('/')
   const [days, setDays] = useState(90)
   const [pattern, setPattern] = useState('*')
   const [params, setParams] = useState<{ path: string; days: number; pattern: string } | null>(null)
+
+  useEffect(() => {
+    if (cfg.data?.default_path) setPath((p) => (p === '/' ? cfg.data.default_path : p))
+  }, [cfg.data])
 
   const q = useQuery({
     queryKey: ['sftp', 'old', params],

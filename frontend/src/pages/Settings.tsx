@@ -27,6 +27,7 @@ export function Settings() {
   const [sPort, setSPort] = useState(22)
   const [sUser, setSUser] = useState('')
   const [sPass, setSPass] = useState('')
+  const [sDef, setSDef] = useState('/')
   const [sMsg, setSMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -67,12 +68,19 @@ export function Settings() {
       setSHost(sftp.data.host)
       setSPort(sftp.data.port)
       setSUser(sftp.data.user)
+      setSDef(sftp.data.default_path || '/')
     }
   }, [sftp.data])
 
   const saveSftp = useMutation({
     mutationFn: () =>
-      api.saveSftp({ host: sHost, port: sPort, user: sUser, password: sPass || undefined }),
+      api.saveSftp({
+        host: sHost,
+        port: sPort,
+        user: sUser,
+        password: sPass || undefined,
+        default_path: sDef,
+      }),
     onSuccess: () => {
       setSPass('')
       qc.invalidateQueries({ queryKey: ['settings', 'sftp'] })
@@ -299,6 +307,15 @@ export function Settings() {
                 onChange={(e) => setSPass(e.target.value)}
                 placeholder={sftp.data?.has_password ? '•••••••• (guardada)' : '••••••••'}
                 className="w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="th">Ruta por defecto</span>
+              <input
+                value={sDef}
+                onChange={(e) => setSDef(e.target.value)}
+                placeholder="/nzscratch/nz"
+                className="w-56 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
               />
             </label>
           </div>

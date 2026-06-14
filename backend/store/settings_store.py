@@ -106,11 +106,13 @@ def get_sftp(db_path: Path | None = None) -> dict:
         "user": get_setting("sftp_user", db_path) or "",
         "password": get_setting("sftp_password", db_path) or None,
         "private_key": get_setting("sftp_key", db_path) or None,
+        "default_path": get_setting("sftp_default_path", db_path) or "/",
     }
 
 
-def set_sftp(host: str | None, port: int | None, user: str | None,
-             password: str | None, private_key: str | None, db_path: Path | None = None) -> None:
+def set_sftp(host: str | None, port: int | None, user: str | None, password: str | None,
+             private_key: str | None, default_path: str | None = None,
+             db_path: Path | None = None) -> None:
     if host is not None:
         set_setting("sftp_host", host, db_path=db_path)
     if port is not None:
@@ -121,3 +123,5 @@ def set_sftp(host: str | None, port: int | None, user: str | None,
         set_setting("sftp_password", password, secret=True, db_path=db_path)
     if private_key:
         set_setting("sftp_key", private_key, secret=True, db_path=db_path)
+    if default_path is not None:
+        set_setting("sftp_default_path", default_path, db_path=db_path)
