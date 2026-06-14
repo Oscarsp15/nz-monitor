@@ -60,6 +60,16 @@ def _context(question: str, replied: str | None) -> str:
         dbs = sorted(sp["data"].get("databases", []), key=lambda x: x.get("gb", 0), reverse=True)
         top = ", ".join(f"{x['db']} {x['gb']}GB" for x in dbs[:3])
         parts.append(f"Top bases por espacio: {top}.")
+    # tablas peor distribuidas del clúster (mayor skew) — para "qué tablas redistribuir"
+    try:
+        worst = service.tables(None, "skew", 0).get("rows", [])[:10]
+        if worst:
+            lst = "; ".join(
+                f"{r['db']}.{r['table']} (skew {r['skew']}, {r['space_gb']}GB)" for r in worst
+            )
+            parts.append(f"Tablas con mayor skew (mal distribuidas) en el clúster: {lst}.")
+    except Exception as e:  # noqa: BLE001
+        log.warning("[assistant] ctx skew %s", e)
     # si el mensaje o la alerta citan un dataslice, traer sus tablas peor distribuidas
     m = _DS_RE.search(replied or "") or _DS_RE.search(question or "")
     if m:
@@ -83,7 +93,8 @@ def handle_update(update: dict, my_chat: str) -> None:
     replied = ((msg.get("reply_to_message") or {}).get("text")) or None
     prompt = (
         "Eres el asistente de nz-monitor (observabilidad de Netezza). Responde breve y claro, en "
-        "español, tono técnico, SIN markdown. Básate SOLO en estos datos en vivo:\n"
+        "español, tono técnico, SIN markdown. Básate SOLO en estos datos en vivo (no inventes "
+        "tablas ni números; si piden tablas para redistribuir, usa la lista de mayor skew):\n"
         f"{_context(text, replied)}\n"
         + (f'El usuario responde a esta alerta: "{replied}".\n' if replied else "")
         + f"Pregunta: {text}"
