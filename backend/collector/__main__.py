@@ -4,9 +4,11 @@
 docker-compose lo arranca como servicio aparte con APP_ROLE=collector y replicas: 1.
 """
 import logging
+import threading
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
+import notify
 from config import get_settings
 from store import init_db
 
@@ -38,6 +40,9 @@ def main() -> None:
             jobs.run_job, "interval", args=[metric_type, fn], seconds=interval,
             id=metric_type, max_instances=1, coalesce=True,
         )
+
+    # asistente conversacional por Telegram (long-polling) en hilo aparte — opcional
+    threading.Thread(target=notify.assistant.run, daemon=True, name="tg-assistant").start()
 
     log.info("recolector arrancado (health=%ss, space=%ss)",
              s.collector_health_interval_seconds, s.collector_space_interval_seconds)

@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 import notify
-from store import get_groq, get_telegram, set_groq, set_telegram
+from store import get_groq, get_setting, get_telegram, set_groq, set_setting, set_telegram
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -19,7 +19,8 @@ class TelegramIn(BaseModel):
 class AiIn(BaseModel):
     api_key: str | None = None  # opcional: si no se manda, se conserva la guardada
     model: str | None = None
-    enabled: bool | None = None
+    enabled: bool | None = None  # análisis IA en las alertas
+    assistant: bool | None = None  # responder mensajes (chat conversacional por Telegram)
 
 
 @router.get("/telegram")
@@ -49,14 +50,18 @@ def telegram_test():
 @router.get("/ai")
 def ai_get():
     key, model, enabled = get_groq()
-    return {"enabled": enabled, "model": model, "has_key": bool(key)}
+    return {"enabled": enabled, "model": model, "has_key": bool(key),
+            "assistant": get_setting("assistant_enabled") == "1"}
 
 
 @router.put("/ai")
 def ai_put(body: AiIn):
     set_groq(body.api_key, body.model, body.enabled)
+    if body.assistant is not None:
+        set_setting("assistant_enabled", "1" if body.assistant else "0")
     key, model, enabled = get_groq()
-    return {"enabled": enabled, "model": model, "has_key": bool(key)}
+    return {"enabled": enabled, "model": model, "has_key": bool(key),
+            "assistant": get_setting("assistant_enabled") == "1"}
 
 
 @router.post("/ai/test")

@@ -19,6 +19,7 @@ export function Settings() {
   const [aiKey, setAiKey] = useState('')
   const [aiModel, setAiModel] = useState('')
   const [aiEnabled, setAiEnabled] = useState(false)
+  const [aiAssistant, setAiAssistant] = useState(false)
   const [aiMsg, setAiMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,12 +30,18 @@ export function Settings() {
     if (ai.data) {
       setAiModel(ai.data.model)
       setAiEnabled(ai.data.enabled)
+      setAiAssistant(ai.data.assistant)
     }
   }, [ai.data])
 
   const saveAi = useMutation({
     mutationFn: () =>
-      api.saveAi({ api_key: aiKey || undefined, model: aiModel, enabled: aiEnabled }),
+      api.saveAi({
+        api_key: aiKey || undefined,
+        model: aiModel,
+        enabled: aiEnabled,
+        assistant: aiAssistant,
+      }),
     onSuccess: () => {
       setAiKey('')
       qc.invalidateQueries({ queryKey: ['settings', 'ai'] })
@@ -161,6 +168,20 @@ export function Settings() {
             />
             Activar análisis IA en las alertas
           </label>
+
+          <label className="flex cursor-pointer items-center gap-2 text-body text-ink0">
+            <input
+              type="checkbox"
+              checked={aiAssistant}
+              onChange={(e) => setAiAssistant(e.target.checked)}
+              className="accent-[var(--live)]"
+            />
+            Responder mis mensajes (chat por Telegram)
+          </label>
+          <p className="font-data text-micro text-ink2">
+            Responde a tus mensajes en Telegram (responde a una alerta del bot para preguntarle sobre
+            ella). Solo atiende tu chat configurado.
+          </p>
 
           <label className="block">
             <span className="th">Groq API key</span>

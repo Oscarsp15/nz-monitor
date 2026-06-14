@@ -156,6 +156,7 @@ export interface AiCfg {
   enabled: boolean
   model: string
   has_key: boolean
+  assistant: boolean
 }
 
 export const api = {
@@ -165,7 +166,7 @@ export const api = {
     mutate<TelegramCfg>('PUT', '/settings/telegram', b),
   testTelegram: () => mutate<{ ok: boolean }>('POST', '/settings/telegram/test'),
   getAi: () => get<AiCfg>('/settings/ai'),
-  saveAi: (b: { api_key?: string; model?: string; enabled?: boolean }) =>
+  saveAi: (b: { api_key?: string; model?: string; enabled?: boolean; assistant?: boolean }) =>
     mutate<AiCfg>('PUT', '/settings/ai', b),
   testAi: () => mutate<{ ok: boolean; sample: string | null }>('POST', '/settings/ai/test'),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
