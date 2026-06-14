@@ -12,6 +12,7 @@ import {
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { api } from '../lib/api'
+import { useLiveUpdates } from '../hooks/useLiveUpdates'
 import { ThemeToggle } from './ThemeToggle'
 
 interface SubTab {
@@ -84,6 +85,7 @@ export function Layout() {
   const { pathname } = useLocation()
   const dom = activeDomain(pathname)
   const alert = useAlertCount()
+  useLiveUpdates() // SSE: refresca las vistas cuando el recolector publica datos nuevos
 
   return (
     <div className="min-h-screen md:flex">
