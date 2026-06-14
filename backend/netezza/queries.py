@@ -93,6 +93,18 @@ def tables_on_dataslice(dsid: int, offset: int = 0) -> str:
     """
 
 
+def dataslice_counts(dsid: int, threshold: float = 8.0) -> str:
+    # Totales del dataslice: nº de tablas que lo ocupan y cuántas están mal distribuidas (skew>umbral).
+    return f"""
+      SELECT COUNT(*) AS n,
+        SUM(CASE WHEN s.skew>{threshold} THEN 1 ELSE 0 END) AS skewed
+      FROM _V_SYS_OBJECT_DSLICE_INFO i
+      JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=i.tblid
+      JOIN _V_OBJ_RELATION_XDB a ON a.objid=i.tblid
+      WHERE i.dsid={dsid} AND a.OBJTYPE='TABLE' AND i.used_bytes>0
+    """
+
+
 def dist_expr() -> str:
     return ("TRIM(BOTH ',' FROM "
             "COALESCE(MAX(CASE WHEN distseqno=1 THEN attname END),'')||','||"

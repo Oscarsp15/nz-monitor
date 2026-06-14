@@ -21,6 +21,11 @@ export function DataslicePage() {
   // Estado del dataslice (de la lista, cacheada) para el encabezado.
   const dsList = useQuery({ queryKey: ['dataslices'], queryFn: () => api.dataslices() })
   const info = (dsList.data?.rows ?? []).find((r) => r.id === ds)
+  const sum = useQuery({
+    queryKey: ['ds-summary', ds],
+    queryFn: () => api.datasliceSummary(ds),
+    enabled: Number.isFinite(ds),
+  })
 
   const q = useQuery({
     queryKey: ['ds-tables', ds, page],
@@ -40,7 +45,6 @@ export function DataslicePage() {
   const rows = q.data?.rows ?? []
   const pct = info?.pct ?? 0
   const pctColor = pct >= 95 ? 'var(--crit)' : pct >= 90 ? 'var(--warn)' : 'var(--live)'
-  const skewedOnPage = rows.filter((r) => r.skew >= 8).length
 
   const doExport = () =>
     exportToExcel<DsTableRow>(
@@ -80,23 +84,28 @@ export function DataslicePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="panel px-4 py-3">
           <div className="th">Saturación</div>
           <div className="mt-1 font-data text-kpi" style={{ color: pctColor }}>
             {info ? `${pct.toFixed(1)}%` : '—'}
           </div>
         </div>
-        <KpiCard label="Usado / tamaño" value={info ? `${gb(info.gb_used)}` : '—'} sub={info ? `de ${gb(info.gb_size)}` : undefined} />
+        <KpiCard
+          label="Usado / tamaño"
+          value={info ? `${gb(info.gb_used)}` : '—'}
+          sub={info ? `de ${gb(info.gb_size)}` : undefined}
+        />
+        <KpiCard label="Tablas en el ds" value={String(sum.data?.total ?? '—')} loading={sum.isLoading} />
         <div className="panel px-4 py-3">
-          <div className="th">Mal distribuidas (pág.)</div>
+          <div className="th">Mal distribuidas</div>
           <div
             className="mt-1 font-data text-kpi"
-            style={{ color: skewedOnPage > 0 ? 'var(--warn)' : 'var(--ok)' }}
+            style={{ color: (sum.data?.skewed ?? 0) > 0 ? 'var(--warn)' : 'var(--ok)' }}
           >
-            {loading ? '···' : skewedOnPage}
+            {sum.isLoading ? '···' : (sum.data?.skewed ?? 0)}
           </div>
-          <div className="mt-0.5 font-data text-micro text-ink2">skew &gt; 8</div>
+          <div className="mt-0.5 font-data text-micro text-ink2">skew &gt; 8 · total</div>
         </div>
       </div>
 
