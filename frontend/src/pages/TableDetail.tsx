@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { KpiCard } from '../components/KpiCard'
 import { api } from '../lib/api'
-import { gb } from '../lib/format'
+import { fixed, gb } from '../lib/format'
 
 export function TableDetail() {
   const { objid } = useParams()
@@ -46,7 +46,7 @@ export function TableDetail() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <KpiCard label="Espacio" value={gb(meta?.gb)} loading={detail.isLoading} />
-        <KpiCard label="Skew" value={meta ? meta.skew.toFixed(2) : '—'} loading={detail.isLoading} />
+        <KpiCard label="Skew" value={fixed(meta?.skew)} loading={detail.isLoading} />
         <KpiCard
           label="Dataslices ocupados"
           value={String(slices.data?.slices.length ?? '—')}

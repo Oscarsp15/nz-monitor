@@ -1,14 +1,28 @@
 // Formato de cifras y del sello de frescura ("actualizado hace X").
 
-export function gb(n: number | null | undefined): string {
-  if (n == null) return '—'
-  if (n >= 1024) return `${(n / 1024).toFixed(2)} TB`
-  return `${n.toFixed(2)} GB`
+/** Coacciona a número (el backend a veces manda NUMERIC como string). */
+function num(n: number | string | null | undefined): number | null {
+  if (n == null || n === '') return null
+  const v = typeof n === 'number' ? n : Number(n)
+  return Number.isFinite(v) ? v : null
 }
 
-export function int(n: number | null | undefined): string {
-  if (n == null) return '—'
-  return n.toLocaleString('es')
+export function gb(n: number | string | null | undefined): string {
+  const v = num(n)
+  if (v == null) return '—'
+  if (v >= 1024) return `${(v / 1024).toFixed(2)} TB`
+  return `${v.toFixed(2)} GB`
+}
+
+export function int(n: number | string | null | undefined): string {
+  const v = num(n)
+  if (v == null) return '—'
+  return v.toLocaleString('es')
+}
+
+export function fixed(n: number | string | null | undefined, d = 2): string {
+  const v = num(n)
+  return v == null ? '—' : v.toFixed(d)
 }
 
 /** "hace 12s" / "hace 3 min" / "hace 2 h" a partir de segundos. */

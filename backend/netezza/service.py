@@ -139,7 +139,13 @@ def table_detail(objid: int, table: str):
     out: dict = {"objid": objid, "table": table}
     try:
         m = run(q.table_meta(objid))
-        out["meta"] = m[0] if m else None
+        if m:  # nzpy devuelve NUMERIC como str → castear gb/skew a float
+            r = m[0]
+            out["meta"] = {"db": r.get("db"), "sch": r.get("sch"), "owner": r.get("owner"),
+                           "created": str(r.get("created")), "gb": float(r.get("gb") or 0),
+                           "skew": float(r.get("skew") or 0)}
+        else:
+            out["meta"] = None
     except Exception as e:
         out["meta_error"] = str(e)
     tname = re.sub(r"[^A-Za-z0-9_]", "", table or "").upper()

@@ -26,6 +26,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true, // escucha en toda la red local (acceso desde el cel por la IP de la PC)
     port: 5173,
     proxy: {
       '/api': 'http://localhost:8000',
