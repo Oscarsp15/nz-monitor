@@ -87,13 +87,14 @@ class SftpIn(BaseModel):
     user: str | None = None
     password: str | None = None  # opcional: si no se manda, se conserva
     private_key: str | None = None
+    default_path: str | None = None
 
 
 def _sftp_state() -> dict:
     c = get_sftp()
     return {"host": c["host"], "port": c["port"], "user": c["user"],
             "has_password": bool(c["password"]), "has_key": bool(c["private_key"]),
-            "configured": bool(c["host"] and c["user"])}
+            "default_path": c["default_path"], "configured": bool(c["host"] and c["user"])}
 
 
 @router.get("/sftp")
@@ -103,7 +104,7 @@ def sftp_get():
 
 @router.put("/sftp")
 def sftp_put(body: SftpIn):
-    set_sftp(body.host, body.port, body.user, body.password, body.private_key)
+    set_sftp(body.host, body.port, body.user, body.password, body.private_key, body.default_path)
     return _sftp_state()
 
 

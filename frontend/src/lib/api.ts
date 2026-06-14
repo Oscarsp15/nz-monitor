@@ -165,6 +165,7 @@ export interface SftpCfg {
   user: string
   has_password: boolean
   has_key: boolean
+  default_path: string
   configured: boolean
 }
 
@@ -191,7 +192,7 @@ export const api = {
       '/sftp/old-files', p),
   getSftp: () =>
     get<SftpCfg>('/settings/sftp'),
-  saveSftp: (b: { host?: string; port?: number; user?: string; password?: string }) =>
+  saveSftp: (b: { host?: string; port?: number; user?: string; password?: string; default_path?: string }) =>
     mutate<SftpCfg>('PUT', '/settings/sftp', b),
   testSftp: () => mutate<{ status: string; host?: string; error?: string }>('POST', '/settings/sftp/test'),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { KpiCard } from '../components/KpiCard'
 import { RefreshButton } from '../components/RefreshButton'
@@ -11,12 +11,29 @@ function pct(s?: string): number {
 }
 
 export function SftpDisk() {
-  const [path, setPath] = useState('/')
-  const [duPath, setDuPath] = useState('/')
+  const cfg = useQuery({ queryKey: ['settings', 'sftp'], queryFn: api.getSftp })
+  const [path, setPath] = useState('')
+  const [duPath, setDuPath] = useState('')
 
-  const disk = useQuery({ queryKey: ['sftp', 'disk', path], queryFn: () => api.sftpDisk(path) })
+  // inicializa las rutas con la ruta por defecto configurada (p.ej. /nzscratch/nz)
+  useEffect(() => {
+    if (cfg.data) {
+      setPath((p) => p || cfg.data.default_path || '/')
+      setDuPath((p) => p || cfg.data.default_path || '/')
+    }
+  }, [cfg.data])
+
+  const disk = useQuery({
+    queryKey: ['sftp', 'disk', path],
+    queryFn: () => api.sftpDisk(path),
+    enabled: !!path,
+  })
   // independiente del disco: du puede tardar (escanea subárboles); no bloquea la vista
-  const du = useQuery({ queryKey: ['sftp', 'du', duPath], queryFn: () => api.sftpDu(duPath, 20) })
+  const du = useQuery({
+    queryKey: ['sftp', 'du', duPath],
+    queryFn: () => api.sftpDu(duPath, 20),
+    enabled: !!duPath,
+  })
 
   const use = pct(disk.data?.use_percent)
   const color = use >= 90 ? 'var(--crit)' : use >= 80 ? 'var(--warn)' : 'var(--ok)'
