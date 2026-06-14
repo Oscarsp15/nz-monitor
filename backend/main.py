@@ -13,6 +13,7 @@ from config import get_settings
 from monitoring.router import router as monitoring_router
 from netezza.router import router as netezza_router
 from settings.router import router as settings_router
+from sftp.router import router as sftp_router
 from store import init_db
 
 S = get_settings()
@@ -37,6 +38,7 @@ app.include_router(netezza_router)
 app.include_router(monitoring_router)
 app.include_router(settings_router)
 app.include_router(aichat_router)
+app.include_router(sftp_router)
 
 
 @app.get("/health")

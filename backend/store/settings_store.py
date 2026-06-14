@@ -96,3 +96,28 @@ def set_groq(
         set_setting("groq_model", model or DEFAULT_GROQ_MODEL, db_path=db_path)
     if enabled is not None:
         set_setting("ai_alerts_enabled", "1" if enabled else "0", db_path=db_path)
+
+
+# ─── SFTP (credenciales cifradas, config web) ───
+def get_sftp(db_path: Path | None = None) -> dict:
+    return {
+        "host": get_setting("sftp_host", db_path) or "",
+        "port": int(get_setting("sftp_port", db_path) or 22),
+        "user": get_setting("sftp_user", db_path) or "",
+        "password": get_setting("sftp_password", db_path) or None,
+        "private_key": get_setting("sftp_key", db_path) or None,
+    }
+
+
+def set_sftp(host: str | None, port: int | None, user: str | None,
+             password: str | None, private_key: str | None, db_path: Path | None = None) -> None:
+    if host is not None:
+        set_setting("sftp_host", host, db_path=db_path)
+    if port is not None:
+        set_setting("sftp_port", str(port), db_path=db_path)
+    if user is not None:
+        set_setting("sftp_user", user, db_path=db_path)
+    if password:
+        set_setting("sftp_password", password, secret=True, db_path=db_path)
+    if private_key:
+        set_setting("sftp_key", private_key, secret=True, db_path=db_path)
