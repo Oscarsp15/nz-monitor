@@ -7,13 +7,15 @@ import re
 import time
 from collections import defaultdict
 
+from cache import get_cache
 from config import get_settings
+
 from . import queries as q
 from .connection import execute_query
 
 S = get_settings()
 
-_cache: dict = {}
+_cache = get_cache()  # caché enchufable (memoria hoy, Redis al escalar — ver ARCHITECTURE §2.3)
 _dbset: set[str] = set()
 _dbset_at: float = 0.0
 
@@ -24,13 +26,16 @@ def run(sql: str) -> list[dict]:
                          S.netezza_user, S.netezza_password, sql)
 
 
-def _cached(key, ttl, producer):
+def _cached(key, ttl, producer, fresh: bool = False):
+    """Cache-aside. `fresh=True` ("Actualizar ahora") salta la lectura y refresca el valor."""
+    skey = "nz:" + ":".join(str(p) for p in key)
+    if not fresh:
+        hit = _cache.get(skey)
+        if hit is not None:
+            return hit[0], hit[1], True
     now = time.time()
-    hit = _cache.get(key)
-    if hit and now - hit[1] < ttl:
-        return hit[0], hit[1], True
     val = producer()
-    _cache[key] = (val, now)
+    _cache.set(skey, (val, now), ttl)
     return val, now, False
 
 
@@ -53,30 +58,37 @@ def safe_db(db: str | None) -> str | None:
     return db if db in _dbset else S.netezza_database
 
 
-# ─── pasivos ───
-def overview(db: str | None):
+# ─── pasivos / análisis (caché con bypass `fresh`) ───
+def overview(db: str | None, fresh: bool = False):
     db = safe_db(db)
-    data, at, cached = _cached(("ov", db), S.overview_ttl, lambda: run(q.overview(db))[0])
+    data, at, cached = _cached(("ov", db), S.overview_ttl, lambda: run(q.overview(db))[0], fresh)
     return {"data": {"total_gb": float(data["total_gb"] or 0), "table_count": int(data["table_count"] or 0)},
             "database": db, "at": at, "from_cache": cached}
 
 
-def dataslices():
-    rows, at, cached = _cached(("ds",), S.dataslices_ttl, lambda: run(q.SQL_DSLICE))
+def dataslices(fresh: bool = False):
+    rows, at, cached = _cached(("ds",), S.dataslices_ttl, lambda: run(q.SQL_DSLICE), fresh)
     out = [{"id": int(r["ds_id"]), "pct": round(float(r["pct"] or 0), 2),
             "gb_used": float(r["gb_used"] or 0), "gb_size": float(r["gb_size"] or 0),
             "status": r["ds_status"]} for r in rows]
     return {"rows": out, "at": at, "from_cache": cached}
 
 
-def owners(db: str | None):
+def owners(db: str | None, fresh: bool = False):
     db = safe_db(db)
-    rows, at, cached = _cached(("ow", db), S.tables_ttl, lambda: run(q.owners(db)))
+    rows, at, cached = _cached(("ow", db), S.tables_ttl, lambda: run(q.owners(db)), fresh)
     out = [{"owner": r["owner"], "tablas": int(r["tablas"] or 0), "gb": float(r["gb"] or 0)} for r in rows]
     return {"rows": out, "database": db, "at": at, "from_cache": cached}
 
 
-def tables(db: str | None, ds: int, order: str, page: int):
+def space_by_db() -> list[dict]:
+    """Espacio + nº de tablas por base (todas). Query pesada → la usa el recolector, no la API."""
+    rows = run(q.SQL_SPACE_BY_DB)
+    return [{"db": r["dbname"], "table_count": int(r["table_count"] or 0), "gb": float(r["gb"] or 0)}
+            for r in rows]
+
+
+def tables(db: str | None, ds: int, order: str, page: int, fresh: bool = False):
     db = safe_db(db)
     ds = ds if 0 < ds < 100000 else 1
     order = order if order in q.ORDER_COL else "space"
@@ -110,7 +122,7 @@ def tables(db: str | None, ds: int, order: str, page: int):
                     pass
         return {"rows": norm, "has_next": has_next}
 
-    val, at, cached = _cached(key, S.tables_ttl, produce)
+    val, at, cached = _cached(key, S.tables_ttl, produce, fresh)
     return {**val, "database": db, "ds": ds, "order": order, "page": page, "at": at, "from_cache": cached}
 
 

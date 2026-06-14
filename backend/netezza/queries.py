@@ -13,6 +13,14 @@ SQL_DATABASES = "SELECT DATABASE FROM _V_DATABASE ORDER BY DATABASE"
 SQL_DSLICE = ("SELECT ds_id, ds_percentused AS pct, ROUND(ds_used/1073741824.0,1) AS gb_used, "
               "ds_size AS gb_size, ds_status FROM _V_DSLICE ORDER BY ds_id")
 
+# Espacio + nº de tablas por base (todas las bases) — query pesada → solo en el recolector.
+SQL_SPACE_BY_DB = (
+    "SELECT a.database AS dbname, COUNT(*) AS table_count, "
+    "ROUND(SUM(s.used_bytes)/1073741824.0,2) AS gb "
+    "FROM _V_OBJ_RELATION_XDB a JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=a.objid "
+    "WHERE a.OBJTYPE='TABLE' GROUP BY a.database ORDER BY gb DESC NULLS LAST"
+)
+
 
 def _where_db(db: str | None) -> str:
     return "" if not db else f" AND a.database='{db}'"

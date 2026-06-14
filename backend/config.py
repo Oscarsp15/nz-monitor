@@ -8,7 +8,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_env: str = "development"
+    # api = solo sirve la API (NO arranca el recolector) · collector = proceso único del recolector
+    app_role: str = "api"
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    # Base local (snapshots, auth, credenciales cifradas). Ver ARCHITECTURE.md §3.
+    database_url: str = "sqlite:///./data/nzmonitor.db"
 
     # Netezza (MVP: una conexión por entorno; en prod vendrá del store cifrado)
     netezza_host: str = ""
@@ -20,10 +25,21 @@ class Settings(BaseSettings):
     netezza_query_timeout: int = 30
     netezza_pool_max_size: int = 5
 
-    # caché de endpoints pasivos (cache-aside; ver ROADMAP Fase 1)
+    # Recolector (proceso único, APScheduler) — frecuencias en segundos (ver AGENTS.md §6)
+    collector_health_interval_seconds: int = 90
+    collector_alerts_interval_seconds: int = 180
+    collector_space_interval_seconds: int = 300
+
+    # Caché / EventBus enchufables (ver ARCHITECTURE.md §2.3). memory hoy; redis al escalar.
+    cache_backend: str = "memory"
+    eventbus_backend: str = "memory"
+    redis_url: str = "redis://localhost:6379/0"
+
+    # caché de endpoints pasivos / "en vivo" (cache-aside; lo salta ?fresh=true)
     overview_ttl: int = 30
     tables_ttl: int = 60
     dataslices_ttl: int = 60
+    live_query_cache_seconds: int = 300
 
 
 @lru_cache
