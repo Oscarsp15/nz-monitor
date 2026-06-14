@@ -123,8 +123,8 @@ export const api = {
     get<{ rows: Dataslice[] } & Freshness>('/dataslices', { fresh }),
   owners: (db: string, fresh = false) =>
     get<{ rows: OwnerRow[]; database: string | null } & Freshness>('/owners', { db, fresh }),
-  tables: (p: { db: string; order: string; page: number; fresh?: boolean }) =>
-    get<TablesResp>('/tables', { ...p, fresh: p.fresh ?? false }),
+  tables: (p: { db: string; order: string; page: number; fresh?: boolean; q?: string }) =>
+    get<TablesResp>('/tables', { db: p.db, order: p.order, page: p.page, fresh: p.fresh ?? false, q: p.q ?? '' }),
   tableDetail: (objid: number, table: string) =>
     get<TableDetailResp>('/table', { objid, table }),
   tableSlices: (objid: number) =>

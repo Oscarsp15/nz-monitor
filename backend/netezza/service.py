@@ -88,14 +88,16 @@ def space_by_db() -> list[dict]:
             for r in rows]
 
 
-def tables(db: str | None, order: str, page: int, fresh: bool = False):
+def tables(db: str | None, order: str, page: int, fresh: bool = False, search: str | None = None):
     db = safe_db(db)
     order = order if order in q.ORDER_COL else "space"
     page = max(0, page)
-    key = ("tb", db, order, page)
+    # saneo del término: solo [A-Z0-9_ ] (evita inyección en el LIKE), máx 40
+    s = re.sub(r"[^A-Z0-9_ ]", "", (search or "").upper()).strip()[:40] or None
+    key = ("tb", db, order, page, s or "")
 
     def produce():
-        rows = run(q.tables(db, order, page * q.PAGE))
+        rows = run(q.tables(db, order, page * q.PAGE, s))
         has_next = len(rows) > q.PAGE
         rows = rows[:q.PAGE]
         norm = [{"db": r.get("dbname"), "schema": r.get("schema"), "table": r.get("tablename"),
@@ -121,7 +123,8 @@ def tables(db: str | None, order: str, page: int, fresh: bool = False):
         return {"rows": norm, "has_next": has_next}
 
     val, at, cached = _cached(key, S.tables_ttl, produce, fresh)
-    return {**val, "database": db, "order": order, "page": page, "at": at, "from_cache": cached}
+    return {**val, "database": db, "order": order, "page": page, "search": s or "",
+            "at": at, "from_cache": cached}
 
 
 # ─── investigación (en vivo, sin caché) ───

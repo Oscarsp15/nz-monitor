@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRef } from 'react'
 
+import { ExportButton } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
+import { KpiCard } from '../components/KpiCard'
 import { RefreshButton } from '../components/RefreshButton'
-import { api } from '../lib/api'
+import { api, type Dataslice } from '../lib/api'
+import { exportToExcel, stamp } from '../lib/exportXlsx'
 import { ageFromAt, gb } from '../lib/format'
 
 // color de la barra según saturación (mismos umbrales que las alertas / el DAG)
@@ -29,6 +32,22 @@ export function Dataslices() {
   }
   const rows = q.data?.rows ?? []
   const maxPct = Math.max(0, ...rows.map((r) => r.pct))
+  const avgPct = rows.length ? rows.reduce((a, r) => a + r.pct, 0) / rows.length : 0
+  const usedGb = rows.reduce((a, r) => a + r.gb_used, 0)
+
+  const doExport = () =>
+    exportToExcel<Dataslice>(
+      `dataslices_${stamp()}.xlsx`,
+      rows,
+      [
+        { header: 'Dataslice', value: (r) => r.id },
+        { header: '% uso', value: (r) => r.pct },
+        { header: 'Usado GB', value: (r) => r.gb_used },
+        { header: 'Tamaño GB', value: (r) => r.gb_size },
+        { header: 'Estado', value: (r) => r.status },
+      ],
+      'Dataslices',
+    )
 
   return (
     <div className="space-y-4">
@@ -39,8 +58,16 @@ export function Dataslices() {
         </div>
         <div className="flex items-center gap-2">
           <FreshnessSeal ageSeconds={ageFromAt(q.data?.at)} />
+          <ExportButton onClick={doExport} disabled={rows.length === 0} />
           <RefreshButton onClick={refreshNow} busy={q.isFetching} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <KpiCard label="Dataslices" value={String(rows.length)} loading={q.isLoading} />
+        <KpiCard label="Saturación máx" value={`${maxPct.toFixed(1)}%`} loading={q.isLoading} />
+        <KpiCard label="Saturación prom" value={`${avgPct.toFixed(1)}%`} loading={q.isLoading} />
+        <KpiCard label="Usado total" value={gb(usedGb)} loading={q.isLoading} />
       </div>
 
       <section className="panel overflow-x-auto">
