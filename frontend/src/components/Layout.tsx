@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, Bell } from 'lucide-react'
+import { Activity, Bell, Settings as SettingsIcon } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { api } from '../lib/api'
@@ -61,6 +61,13 @@ export function Layout() {
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <AlertBell />
+            <NavLink
+              to="/ajustes"
+              className="rounded p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0"
+              title="Ajustes"
+            >
+              <SettingsIcon size={16} strokeWidth={1.5} />
+            </NavLink>
             <ThemeToggle />
           </div>
         </div>

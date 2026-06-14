@@ -6,6 +6,7 @@ import { DataslicePage } from './pages/DataslicePage'
 import { Dataslices } from './pages/Dataslices'
 import { Overview } from './pages/Overview'
 import { Owners } from './pages/Owners'
+import { Settings } from './pages/Settings'
 import { TableDetail } from './pages/TableDetail'
 import { Tables } from './pages/Tables'
 
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { path: 'owners', element: <Owners /> },
       { path: 'alertas', element: <Alerts /> },
       { path: 'tabla/:objid', element: <TableDetail /> },
+      { path: 'ajustes', element: <Settings /> },
     ],
   },
 ])

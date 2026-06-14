@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from monitoring.router import router as monitoring_router
 from netezza.router import router as netezza_router
+from settings.router import router as settings_router
 from store import init_db
 
 S = get_settings()
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(netezza_router)
 app.include_router(monitoring_router)
+app.include_router(settings_router)
 
 
 @app.get("/health")

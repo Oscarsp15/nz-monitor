@@ -1,0 +1,131 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Send } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
+import { PageSkeleton } from '../components/PageSkeleton'
+import { StatusPill } from '../components/StatusPill'
+import { api } from '../lib/api'
+
+export function Settings() {
+  const qc = useQueryClient()
+  const cfg = useQuery({ queryKey: ['settings', 'telegram'], queryFn: api.getTelegram })
+
+  const [chatId, setChatId] = useState('')
+  const [token, setToken] = useState('')
+  const [testMsg, setTestMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (cfg.data) setChatId(cfg.data.chat_id)
+  }, [cfg.data])
+
+  const save = useMutation({
+    mutationFn: () => api.saveTelegram({ chat_id: chatId, bot_token: token || undefined }),
+    onSuccess: () => {
+      setToken('')
+      qc.invalidateQueries({ queryKey: ['settings', 'telegram'] })
+      qc.invalidateQueries({ queryKey: ['mon', 'alerts'] })
+    },
+  })
+
+  const test = useMutation({
+    mutationFn: api.testTelegram,
+    onMutate: () => setTestMsg(null),
+    onSuccess: (r) =>
+      setTestMsg(r.ok ? '✅ Mensaje enviado. Revisa Telegram.' : '❌ No se pudo enviar (revisa token/chat_id).'),
+    onError: (e) => setTestMsg(`❌ ${(e as Error).message}`),
+  })
+
+  if (cfg.isLoading) {
+    return (
+      <div className="space-y-4">
+        <h1 className="font-dense text-lg font-semibold text-ink0">Ajustes</h1>
+        <PageSkeleton kpis={0} panels={1} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="reveal max-w-2xl space-y-5">
+      <div>
+        <h1 className="font-dense text-lg font-semibold text-ink0">Ajustes</h1>
+        <p className="text-body text-ink1">Toda la configuración vive aquí (se guarda cifrada).</p>
+      </div>
+
+      <section className="panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+          <h2 className="th">Alertas por Telegram</h2>
+          <StatusPill status={cfg.data?.configured ? 'ok' : 'empty'} />
+        </div>
+
+        <div className="space-y-4 p-4">
+          <p className="text-body text-ink1">
+            Recibe un mensaje cuando un dataslice entra en <span className="text-crit">crítico</span>{' '}
+            (≥95%). Funciona con un chat personal, un <b>grupo</b> (id negativo) o un canal.
+          </p>
+
+          <label className="block">
+            <span className="th">Bot token</span>
+            <input
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={cfg.data?.has_token ? '•••••••• (guardado — escribe para cambiarlo)' : '123456:ABC-DEF…'}
+              className="mt-1 w-full rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+            />
+            <span className="mt-1 block font-data text-micro text-ink2">
+              Créalo con @BotFather en Telegram.
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="th">Chat ID (usuario, grupo o canal)</span>
+            <input
+              value={chatId}
+              onChange={(e) => setChatId(e.target.value)}
+              placeholder="-1001234567890"
+              className="mt-1 w-full rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+            />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+              className="rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+            >
+              {save.isPending ? 'Guardando…' : 'Guardar'}
+            </button>
+            <button
+              onClick={() => test.mutate()}
+              disabled={test.isPending || !cfg.data?.configured}
+              className="inline-flex items-center gap-1.5 rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+              title={cfg.data?.configured ? 'Enviar mensaje de prueba' : 'Guarda token y chat_id primero'}
+            >
+              <Send size={13} strokeWidth={1.5} /> Probar
+            </button>
+            {save.isSuccess && !save.isPending && (
+              <span className="font-data text-micro text-ok">Guardado.</span>
+            )}
+            {testMsg && <span className="font-data text-micro text-ink1">{testMsg}</span>}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel p-4">
+        <h2 className="th">Cómo obtener el Chat ID de un grupo</h2>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-body text-ink1">
+          <li>Crea el bot con <span className="font-data text-ink0">@BotFather</span> y copia el token.</li>
+          <li>Agrega el bot a tu grupo.</li>
+          <li>Escribe cualquier mensaje en el grupo.</li>
+          <li>
+            Abre{' '}
+            <span className="font-data text-ink0">
+              https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates
+            </span>{' '}
+            y copia <span className="font-data text-ink0">chat.id</span> (negativo para grupos).
+          </li>
+        </ol>
+      </section>
+    </div>
+  )
+}

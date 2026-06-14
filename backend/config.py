@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_env: str = "development"
+    # clave maestra para cifrar settings sensibles en la BD (token Telegram, etc.).
+    # En prod, ponla larga y aleatoria en .env. Es el unico secreto de bootstrap.
+    secret_key: str = "nz-monitor-dev-secret-change-me"  # noqa: S105 (default de dev; override en .env)
     # api = solo sirve la API (NO arranca el recolector) · collector = proceso único del recolector
     app_role: str = "api"
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
@@ -34,6 +37,11 @@ class Settings(BaseSettings):
     cache_backend: str = "memory"
     eventbus_backend: str = "memory"
     redis_url: str = "redis://localhost:6379/0"
+
+    # Notificaciones Telegram (push de alertas). Vacío = desactivado (no rompe).
+    # chat_id puede ser un usuario, un GRUPO (id negativo, p.ej. -1001234567890) o un canal.
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
 
     # caché de endpoints pasivos / "en vivo" (cache-aside; lo salta ?fresh=true)
     overview_ttl: int = 30
