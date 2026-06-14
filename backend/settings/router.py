@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 import notify
-from store import get_telegram, set_telegram
+from store import get_groq, get_telegram, set_groq, set_telegram
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -14,6 +14,12 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 class TelegramIn(BaseModel):
     bot_token: str | None = None  # opcional: si no se manda, se conserva el guardado
     chat_id: str | None = None
+
+
+class AiIn(BaseModel):
+    api_key: str | None = None  # opcional: si no se manda, se conserva la guardada
+    model: str | None = None
+    enabled: bool | None = None
 
 
 @router.get("/telegram")
@@ -37,3 +43,23 @@ def telegram_put(body: TelegramIn):
 def telegram_test():
     ok = notify.send("✅ nz-monitor: mensaje de prueba. Las alertas llegarán aquí.")
     return {"ok": ok}
+
+
+# ─── IA (Groq) — alertas inteligentes, opcional ───
+@router.get("/ai")
+def ai_get():
+    key, model, enabled = get_groq()
+    return {"enabled": enabled, "model": model, "has_key": bool(key)}
+
+
+@router.put("/ai")
+def ai_put(body: AiIn):
+    set_groq(body.api_key, body.model, body.enabled)
+    key, model, enabled = get_groq()
+    return {"enabled": enabled, "model": model, "has_key": bool(key)}
+
+
+@router.post("/ai/test")
+def ai_test():
+    txt = notify.ai.ask("Responde en una sola linea, en espanol: 'Conexion con la IA correcta.'")
+    return {"ok": txt is not None, "sample": txt}

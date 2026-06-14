@@ -73,3 +73,26 @@ def set_telegram(token: str | None, chat_id: str | None, db_path: Path | None = 
         set_setting("telegram_bot_token", token, secret=True, db_path=db_path)
     if chat_id is not None:
         set_setting("telegram_chat_id", chat_id, db_path=db_path)
+
+
+# ─── IA Groq (alertas inteligentes, opcional) ───
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+
+
+def get_groq(db_path: Path | None = None) -> tuple[str, str, bool]:
+    """(api_key, model, enabled). api_key cae al .env si no está en la BD."""
+    key = get_setting("groq_api_key", db_path) or get_settings().groq_api_key
+    model = get_setting("groq_model", db_path) or DEFAULT_GROQ_MODEL
+    enabled = (get_setting("ai_alerts_enabled", db_path) or "0") == "1"
+    return key, model, enabled
+
+
+def set_groq(
+    api_key: str | None, model: str | None, enabled: bool | None, db_path: Path | None = None
+) -> None:
+    if api_key:
+        set_setting("groq_api_key", api_key, secret=True, db_path=db_path)
+    if model is not None:
+        set_setting("groq_model", model or DEFAULT_GROQ_MODEL, db_path=db_path)
+    if enabled is not None:
+        set_setting("ai_alerts_enabled", "1" if enabled else "0", db_path=db_path)

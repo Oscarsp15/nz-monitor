@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 
 from store import get_setting, get_telegram, set_setting
 
+from . import ai
+
 log = logging.getLogger("collector")
 
 # recordatorio de un crítico que persiste (minutos) — además del aviso al entrar en crítico
@@ -72,8 +74,13 @@ def notify_alerts(payload: dict | None) -> None:
     if crit and (is_new or is_remind):
         lines = "\n".join(f"🔴 {a['message']}" for a in crit_alerts)
         prefix = "" if is_new else "(recordatorio) "
-        send(f"<b>nz-monitor — {prefix}dataslices críticos</b>\n{lines}\n"
-             f"<i>saturación máx. {payload.get('max_dataslice_pct')}%</i>")
+        text = (f"<b>nz-monitor — {prefix}dataslices críticos</b>\n{lines}\n"
+                f"<i>saturación máx. {payload.get('max_dataslice_pct')}%</i>")
+        if ai.enabled():  # análisis IA opcional (Groq): qué tablas y qué hacer
+            extra = ai.alert_analysis(crit_alerts)
+            if extra:
+                text += f"\n\n🤖 {extra}"
+        send(text)
         set_setting("telegram_notified_crit", json.dumps(crit))
         set_setting("telegram_last_notify", datetime.now(UTC).isoformat())
     elif not crit and notified:  # se resolvió todo

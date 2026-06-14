@@ -152,12 +152,22 @@ export interface TelegramCfg {
   has_token: boolean
 }
 
+export interface AiCfg {
+  enabled: boolean
+  model: string
+  has_key: boolean
+}
+
 export const api = {
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
   getTelegram: () => get<TelegramCfg>('/settings/telegram'),
   saveTelegram: (b: { bot_token?: string; chat_id?: string }) =>
     mutate<TelegramCfg>('PUT', '/settings/telegram', b),
   testTelegram: () => mutate<{ ok: boolean }>('POST', '/settings/telegram/test'),
+  getAi: () => get<AiCfg>('/settings/ai'),
+  saveAi: (b: { api_key?: string; model?: string; enabled?: boolean }) =>
+    mutate<AiCfg>('PUT', '/settings/ai', b),
+  testAi: () => mutate<{ ok: boolean; sample: string | null }>('POST', '/settings/ai/test'),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
   dbSummary: (db: string, fresh = false) =>
     get<{ table_count: number; total_gb: number; skewed: number; database: string | null } & Freshness>(
