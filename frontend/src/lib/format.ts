@@ -17,7 +17,10 @@ export function gb(n: number | string | null | undefined): string {
 export function int(n: number | string | null | undefined): string {
   const v = num(n)
   if (v == null) return '—'
-  return v.toLocaleString('es')
+  // separador de miles = espacio fino (U+202F), inequívoco frente al punto decimal de gb()
+  return Math.round(v)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
 
 export function fixed(n: number | string | null | undefined, d = 2): string {

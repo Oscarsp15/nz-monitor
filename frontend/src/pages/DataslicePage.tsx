@@ -10,7 +10,7 @@ import { RefreshButton } from '../components/RefreshButton'
 import { SkewBadge } from '../components/SkewBadge'
 import { api, type DsTableRow } from '../lib/api'
 import { exportToExcel, stamp } from '../lib/exportXlsx'
-import { gb } from '../lib/format'
+import { gb, int } from '../lib/format'
 
 export function DataslicePage() {
   const { id } = useParams()
@@ -109,14 +109,14 @@ export function DataslicePage() {
           value={info ? `${gb(info.gb_used)}` : '—'}
           sub={info ? `de ${gb(info.gb_size)}` : undefined}
         />
-        <KpiCard label="Tablas en el ds" value={String(sum.data?.total ?? '—')} loading={sum.isLoading} />
+        <KpiCard label="Tablas en el ds" value={sum.data ? int(sum.data.total) : '—'} loading={sum.isLoading} />
         <div className="panel px-4 py-3">
           <div className="th">Mal distribuidas</div>
           <div
             className="mt-1 font-data kpi-value"
             style={{ color: (sum.data?.skewed ?? 0) > 0 ? 'var(--warn)' : 'var(--ok)' }}
           >
-            {sum.isLoading ? '···' : (sum.data?.skewed ?? 0)}
+            {sum.isLoading ? '···' : int(sum.data?.skewed)}
           </div>
           <div className="mt-0.5 font-data text-micro text-ink2">skew &gt; 8 · total</div>
         </div>
