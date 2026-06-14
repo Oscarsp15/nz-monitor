@@ -5,6 +5,7 @@ import { ExportButton } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
 import { RefreshButton } from '../components/RefreshButton'
+import { TrendPanel } from '../components/TrendChart'
 import { api, type Dataslice } from '../lib/api'
 import { exportToExcel, stamp } from '../lib/exportXlsx'
 import { ageFromAt, gb } from '../lib/format'
@@ -26,6 +27,7 @@ export function Dataslices() {
       return api.dataslices(fresh)
     },
   })
+  const histSat = useQuery({ queryKey: ['hist', 'sat'], queryFn: api.historySaturation })
   const refreshNow = () => {
     freshRef.current = true
     q.refetch()
@@ -69,6 +71,13 @@ export function Dataslices() {
         <KpiCard label="Saturación prom" value={`${avgPct.toFixed(1)}%`} loading={q.isLoading} />
         <KpiCard label="Usado total" value={gb(usedGb)} loading={q.isLoading} />
       </div>
+
+      <TrendPanel
+        label="Saturación máx. · tendencia"
+        current={`${maxPct.toFixed(1)}%`}
+        values={(histSat.data?.points ?? []).map((p) => p.max_pct)}
+        color={maxPct >= 95 ? 'var(--crit)' : maxPct >= 90 ? 'var(--warn)' : 'var(--live)'}
+      />
 
       <section className="panel overflow-x-auto">
         <table className="w-full min-w-[560px]">
