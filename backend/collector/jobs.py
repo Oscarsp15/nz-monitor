@@ -65,8 +65,6 @@ def collect_alerts() -> Any:
 
 def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | None = None) -> dict:
     """Ejecuta un job, persiste el snapshot, publica un evento y (alertas) notifica. No lanza."""
-    # estado previo de alertas ANTES de guardar (para detectar críticos nuevos → Telegram)
-    prev = snapshots.latest_snapshot(metric_type) if metric_type == ALERTS else None
     try:
         payload = fn()
         status, error = "ok", None
@@ -82,7 +80,7 @@ def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | Non
     if status == "ok" and metric_type == ALERTS:
         # una notificación nunca rompe el recolector (notify ya es tolerante a fallos)
         with contextlib.suppress(Exception):
-            notify.notify_alerts(prev, payload)
+            notify.notify_alerts(payload)
     return {
         "metric_type": metric_type, "status": status, "collected_at": collected_at, "error": error,
     }
