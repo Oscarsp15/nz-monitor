@@ -147,6 +147,10 @@ Principios derivados:
   que salta caché del backend).
 - **Toggle "modo en vivo"** por vista, **off por defecto**.
 - Mostrar siempre el **sello de frescura**: *"actualizado hace 3 min"*.
+- 🟡 **Carga atómica (regla, no escalonada).** Una vista con **varias consultas** debe **esperar a que
+  todas terminen y pintar junto**, con esqueleto/atenuado mientras carga. **Prohibido** revelar
+  secciones a distinto ritmo (KPIs primero, tabla después…) → da sensación de desorden. Combinar los
+  estados de carga (`loading = a.isLoading || b.isLoading`) y revelar todo con un fade. Ver §12.
 
 ---
 
@@ -177,6 +181,7 @@ Principios derivados:
 - [ ] ¿Las queries tienen timeout?
 - [ ] ¿Datos de investigación se sirven **en vivo**, no cacheados?
 - [ ] ¿Endpoints con auth y entrada validada?
+- [ ] ¿Las vistas con varias consultas cargan **atómicas** (todo junto, atenuado mientras), sin aparición escalonada? (§8/§12)
 
 ---
 
