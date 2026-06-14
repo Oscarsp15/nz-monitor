@@ -54,8 +54,8 @@ def disk_usage(path: str = "/") -> dict:
 def du_top(path: str, top: int = 20) -> list[dict]:
     path = _safe_path(path)
     top = max(1, min(int(top or 20), 100))
-    with _conn() as conn:
-        r = conn.run(f"du -sh {path}/* 2>/dev/null | sort -rh | head -n {top}")
+    with _conn() as conn:  # du puede tardar (escanea subárboles) → timeout amplio
+        r = conn.run(f"du -sh {path}/* 2>/dev/null | sort -rh | head -n {top}", timeout=120)
     out = []
     for line in r["stdout"].strip().split("\n"):
         parts = line.split(None, 1)
@@ -69,10 +69,11 @@ def old_files(path: str, days: int = 90, pattern: str = "*", max_results: int = 
     pattern = _safe_pattern(pattern)
     days = max(0, min(int(days or 90), 100000))
     max_results = max(1, min(int(max_results or 100), 1000))
-    with _conn() as conn:
+    with _conn() as conn:  # find recursivo puede tardar → timeout amplio
         r = conn.run(
             f'find {path} -name "{pattern}" -type f -mtime +{days} '
-            f'-exec ls -lh {{}} \\; 2>/dev/null | head -n {max_results}'
+            f'-exec ls -lh {{}} \\; 2>/dev/null | head -n {max_results}',
+            timeout=120,
         )
     files = []
     for line in r["stdout"].strip().split("\n"):
