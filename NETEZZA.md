@@ -75,6 +75,19 @@ ORDER BY QH_TEND DESC LIMIT 15;
 ```
 El verbo (acción) se deduce del inicio del SQL: DROP/TRUNCATE/INSERT/UPDATE/DELETE/CREATE/GROOM/ALTER/SELECT.
 
+## ✅ Significado de `skew` (validado contra el appliance, 192 dataslices)
+
+`_V_SYS_OBJECT_STORAGE_SIZE.skew` = **(bytes del dataslice más cargado − promedio) / promedio**, sobre
+**todos** los dataslices del clúster. Interpretación:
+- `0` → tabla **balanceada** (cada dataslice ~igual). Ej.: 21.3 GB repartidos parejo → skew 0.01.
+- `45` → el dataslice más cargado tiene **45× el promedio** (muy skewed).
+- `~Ndataslices` (p. ej. 192) → la tabla vive **entera en un solo dataslice**.
+
+> ⚠️ **`gb_ds` (carga en UN dataslice fijo) se RETIRÓ de la lista de tablas**: para tablas balanceadas
+> era solo `total/Ndataslices` (ruido) y el dataslice "caliente" de una tabla skewed casi nunca es el #1,
+> así que confundía. El análisis real por-dataslice de UNA tabla va en el **detalle**
+> (`_V_SYS_OBJECT_DSLICE_INFO` por `tblid`), que sí es correcto. El `skew` es la señal de concentración.
+
 ## ⚠️ Gotchas (aprendidos a golpes)
 
 - **`ds_percentused` es TEXT** → `CAST(... AS FLOAT)` falla (*Cannot cast TEXT to FLOAT8*). Parsear en

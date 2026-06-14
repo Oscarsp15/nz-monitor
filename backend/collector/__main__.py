@@ -26,6 +26,7 @@ def main() -> None:
     plan = [
         (jobs.HEALTH, jobs.collect_health, s.collector_health_interval_seconds),
         (jobs.SPACE_OVERVIEW, jobs.collect_space_overview, s.collector_space_interval_seconds),
+        (jobs.ALERTS, jobs.collect_alerts, s.collector_alerts_interval_seconds),
     ]
 
     scheduler = BlockingScheduler(timezone="UTC")

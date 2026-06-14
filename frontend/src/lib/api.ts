@@ -27,14 +27,12 @@ export interface TableRow {
   distribute_on: string
   space_gb: number
   skew: number
-  gb_ds: number
 }
 
 export interface TablesResp extends Freshness {
   rows: TableRow[]
   has_next: boolean
   database: string | null
-  ds: number
   order: string
   page: number
 }
@@ -78,6 +76,25 @@ export interface SpaceByDb {
   databases: { db: string; table_count: number; gb: number }[]
 }
 
+export interface AlertItem {
+  level: 'warn' | 'crit'
+  kind: string
+  value: number
+  message: string
+}
+
+export interface AlertsData {
+  alerts: AlertItem[]
+  count: number
+  max_dataslice_pct: number
+}
+
+export interface OwnerRow {
+  owner: string
+  tablas: number
+  gb: number
+}
+
 async function get<T>(path: string, params?: Record<string, string | number | boolean>): Promise<T> {
   const qs = params
     ? '?' +
@@ -104,7 +121,9 @@ export const api = {
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
   dataslices: (fresh = false) =>
     get<{ rows: Dataslice[] } & Freshness>('/dataslices', { fresh }),
-  tables: (p: { db: string; ds: number; order: string; page: number; fresh?: boolean }) =>
+  owners: (db: string, fresh = false) =>
+    get<{ rows: OwnerRow[]; database: string | null } & Freshness>('/owners', { db, fresh }),
+  tables: (p: { db: string; order: string; page: number; fresh?: boolean }) =>
     get<TablesResp>('/tables', { ...p, fresh: p.fresh ?? false }),
   tableDetail: (objid: number, table: string) =>
     get<TableDetailResp>('/table', { objid, table }),
@@ -112,4 +131,5 @@ export const api = {
     get<{ slices: { ds: number; gb: number }[] }>('/table/slices', { objid }),
   monitoringSpace: () => get<Snapshot<SpaceByDb>>('/monitoring/space'),
   monitoringHealth: () => get<Snapshot<unknown>>('/monitoring/health'),
+  monitoringAlerts: () => get<Snapshot<AlertsData>>('/monitoring/alerts'),
 }

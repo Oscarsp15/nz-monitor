@@ -29,8 +29,19 @@ export default defineConfig({
     host: true, // escucha en toda la red local (acceso desde el cel por la IP de la PC)
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
+      '/api': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
+    },
+  },
+  // `vite preview` sirve el build (con service worker → PWA instalable). allowedHosts:true
+  // acepta el host del túnel HTTPS (trycloudflare/ngrok). Proxy de /api al backend.
+  preview: {
+    host: true,
+    port: 4173,
+    allowedHosts: true,
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
     },
   },
 })

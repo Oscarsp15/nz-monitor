@@ -4,7 +4,7 @@ Las entradas se validan en el service (db contra catálogo, ds/page enteros, ord
 blanca) antes de formatear, para evitar inyección.
 """
 
-ORDER_COL = {"space": "gb", "skew": "skew", "ds": "gb_ds"}
+ORDER_COL = {"space": "gb", "skew": "skew"}
 PAGE = 25
 HIST = "HISTDB_SUPPORT.ADMIN.NZ_QUERY_HISTORY"
 
@@ -40,7 +40,9 @@ def owners(db: str | None) -> str:
             f"WHERE a.OBJTYPE='TABLE'{_where_db(db)} GROUP BY a.owner ORDER BY gb DESC NULLS LAST")
 
 
-def tables(db: str | None, ds: int, order: str, offset: int) -> str:
+def tables(db: str | None, order: str, offset: int) -> str:
+    # `skew` = (máx − promedio)/promedio de bytes sobre todos los dataslices (validado vs Netezza):
+    # 0=balanceada, 45=un dataslice con 45× el promedio, ~Ndataslices=toda en uno. Ver NETEZZA.md.
     oc = ORDER_COL.get(order, "gb")
     if not db:  # todas las bases: _V_TABLE_DIST_MAP es por-base -> sin join (2ª pasada en service)
         dist_sel, dist_join = "'—'", ""
@@ -52,12 +54,9 @@ def tables(db: str | None, ds: int, order: str, offset: int) -> str:
       SELECT a.database AS dbname, a.schema AS schema, a.objname AS tablename, a.owner AS owner, a.objid AS objid,
         ROUND(s.used_bytes/1073741824.0,2) AS gb,
         ROUND(s.skew,2) AS skew,
-        ROUND(COALESCE(dsx.bytes_ds,0)/1073741824.0,2) AS gb_ds,
         {dist_sel} AS distribute_on
       FROM _V_OBJ_RELATION_XDB a
       JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=a.objid
-      LEFT JOIN (SELECT tblid, SUM(used_bytes) AS bytes_ds
-                 FROM _V_SYS_OBJECT_DSLICE_INFO WHERE dsid={ds} GROUP BY tblid) dsx ON dsx.tblid=a.objid
       {dist_join}
       WHERE a.OBJTYPE='TABLE'{_where_db(db)}
       ORDER BY {oc} DESC NULLS LAST LIMIT {PAGE + 1} OFFSET {offset}

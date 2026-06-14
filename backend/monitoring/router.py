@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
-from collector.jobs import HEALTH, SPACE_OVERVIEW
+from collector.jobs import ALERTS, HEALTH, SPACE_OVERVIEW
 from store import latest_snapshot
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
@@ -37,3 +37,8 @@ def health():
 @router.get("/space")
 def space():
     return _serve(SPACE_OVERVIEW)
+
+
+@router.get("/alerts")
+def alerts():
+    return _serve(ALERTS)

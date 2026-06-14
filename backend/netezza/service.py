@@ -88,22 +88,20 @@ def space_by_db() -> list[dict]:
             for r in rows]
 
 
-def tables(db: str | None, ds: int, order: str, page: int, fresh: bool = False):
+def tables(db: str | None, order: str, page: int, fresh: bool = False):
     db = safe_db(db)
-    ds = ds if 0 < ds < 100000 else 1
     order = order if order in q.ORDER_COL else "space"
     page = max(0, page)
-    key = ("tb", db, ds, order, page)
+    key = ("tb", db, order, page)
 
     def produce():
-        rows = run(q.tables(db, ds, order, page * q.PAGE))
+        rows = run(q.tables(db, order, page * q.PAGE))
         has_next = len(rows) > q.PAGE
         rows = rows[:q.PAGE]
         norm = [{"db": r.get("dbname"), "schema": r.get("schema"), "table": r.get("tablename"),
                  "owner": r.get("owner"), "objid": int(r.get("objid") or 0),
                  "distribute_on": (r.get("distribute_on") or "RANDOM").strip().strip(",").strip() or "RANDOM",
-                 "space_gb": float(r.get("gb") or 0), "skew": float(r.get("skew") or 0),
-                 "gb_ds": float(r.get("gb_ds") or 0)} for r in rows]
+                 "space_gb": float(r.get("gb") or 0), "skew": float(r.get("skew") or 0)} for r in rows]
         if db is None and norm:  # 2ª pasada de distribución por base (todas las bases)
             bydb = defaultdict(list)
             for n in norm:
@@ -123,7 +121,7 @@ def tables(db: str | None, ds: int, order: str, page: int, fresh: bool = False):
         return {"rows": norm, "has_next": has_next}
 
     val, at, cached = _cached(key, S.tables_ttl, produce, fresh)
-    return {**val, "database": db, "ds": ds, "order": order, "page": page, "at": at, "from_cache": cached}
+    return {**val, "database": db, "order": order, "page": page, "at": at, "from_cache": cached}
 
 
 # ─── investigación (en vivo, sin caché) ───

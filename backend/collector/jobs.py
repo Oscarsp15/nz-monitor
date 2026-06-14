@@ -9,6 +9,7 @@ from typing import Any
 
 from cache import get_event_bus
 from config import get_settings
+from netezza import queries as q
 from netezza import service
 from netezza.connection import test_connection
 from store import snapshots
@@ -16,6 +17,12 @@ from store import snapshots
 # tipos de métrica (coinciden con metric_type en metric_snapshot)
 HEALTH = "health"
 SPACE_OVERVIEW = "space_overview"
+ALERTS = "alerts"
+
+# umbrales de saturación de dataslice (%). Alineados al DAG reporte_distribucion_tablas
+# (banda de alarma 95–97%): el piso del clúster ronda el 85%, así que avisar a 85% era ruido.
+DS_WARN = 90.0
+DS_CRIT = 95.0
 
 S = get_settings()
 
@@ -30,6 +37,26 @@ def collect_health() -> Any:
 def collect_space_overview() -> Any:
     """Espacio + nº de tablas por base (query pesada, solo aquí)."""
     return {"databases": service.space_by_db()}
+
+
+def collect_alerts() -> Any:
+    """Alertas derivadas: dataslices saturados (ds_percentused es TEXT → parsear)."""
+    alerts = []
+    max_pct = 0.0
+    for r in service.run(q.SQL_DSLICE):
+        try:
+            pct = float(r["pct"])
+        except (TypeError, ValueError):
+            continue
+        max_pct = max(max_pct, pct)
+        if pct >= DS_CRIT:
+            alerts.append({"level": "crit", "kind": "dataslice", "value": round(pct, 1),
+                           "message": f"Dataslice {r['ds_id']} saturado al {pct:.0f}%"})
+        elif pct >= DS_WARN:
+            alerts.append({"level": "warn", "kind": "dataslice", "value": round(pct, 1),
+                           "message": f"Dataslice {r['ds_id']} al {pct:.0f}%"})
+    alerts.sort(key=lambda a: a["value"], reverse=True)
+    return {"alerts": alerts, "count": len(alerts), "max_dataslice_pct": round(max_pct, 1)}
 
 
 def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | None = None) -> dict:
