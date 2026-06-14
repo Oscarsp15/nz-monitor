@@ -151,6 +151,8 @@ export const api = {
       '/dataslice/tables',
       { ds: p.ds, page: p.page, fresh: p.fresh ?? false },
     ),
+  datasliceSummary: (ds: number) =>
+    get<{ total: number; skewed: number; ds: number } & Freshness>('/dataslice/summary', { ds }),
   monitoringSpace: () => get<Snapshot<SpaceByDb>>('/monitoring/space'),
   monitoringHealth: () => get<Snapshot<unknown>>('/monitoring/health'),
   monitoringAlerts: () => get<Snapshot<AlertsData>>('/monitoring/alerts'),

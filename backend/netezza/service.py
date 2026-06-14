@@ -196,3 +196,15 @@ def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False):
 
     val, at, cached = _cached(("dsx", dsid, page), S.tables_ttl, produce, fresh)
     return {**val, "ds": dsid, "page": page, "at": at, "from_cache": cached}
+
+
+def dataslice_summary(dsid: int, fresh: bool = False):
+    """Totales de un dataslice (independiente de página): nº tablas y mal distribuidas."""
+    dsid = dsid if 0 < dsid < 100000 else 1
+
+    def produce():
+        r = run(q.dataslice_counts(dsid))[0]
+        return {"total": int(r["n"] or 0), "skewed": int(r["skewed"] or 0)}
+
+    val, at, cached = _cached(("dssum", dsid), S.tables_ttl, produce, fresh)
+    return {**val, "ds": dsid, "at": at, "from_cache": cached}
