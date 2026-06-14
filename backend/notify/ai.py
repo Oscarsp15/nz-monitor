@@ -51,6 +51,29 @@ def ask(prompt: str, max_tokens: int = 300) -> str | None:
         return None
 
 
+def chat(messages: list[dict], tools: list[dict] | None = None,
+         tool_choice: str = "auto", max_tokens: int = 600) -> dict | None:
+    """Chat multi-turno con tool-calling (OpenAI-compat). Devuelve el `message` del modelo."""
+    key, model, _ = get_groq()
+    if not key:
+        return None
+    body: dict = {"model": model, "max_tokens": max_tokens, "temperature": 0.2,
+                  "messages": messages}
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = tool_choice
+    req = urllib.request.Request(  # noqa: S310 (URL fija de Groq, https)
+        GROQ_URL, data=json.dumps(body).encode(),
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                 "User-Agent": GROQ_UA})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310
+            return json.load(r)["choices"][0]["message"]
+    except Exception as e:  # noqa: BLE001
+        log.warning("[groq.chat] %s", e)
+        return None
+
+
 def alert_analysis(crit_alerts: list[dict]) -> str | None:
     """Recomendación IA para el dataslice crítico más cargado y sus tablas culpables."""
     if not enabled() or not crit_alerts:  # sin IA activa, ni siquiera consultamos Netezza
