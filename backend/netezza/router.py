@@ -44,6 +44,11 @@ def tables(db: str | None = None, order: str = "space", page: int = 0,
     return service.tables(db, order, page, fresh, q)
 
 
+@router.get("/search/code")
+def search_code(q: str, db: str | None = None):
+    return service.search_code(q, db)
+
+
 @router.get("/table")
 def table_detail(objid: int, table: str):
     return service.table_detail(objid, table)

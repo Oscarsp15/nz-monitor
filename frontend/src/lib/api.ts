@@ -208,6 +208,9 @@ export const api = {
     get<{ rows: OwnerRow[]; database: string | null } & Freshness>('/owners', { db, fresh }),
   tables: (p: { db: string; order: string; page: number; fresh?: boolean; q?: string }) =>
     get<TablesResp>('/tables', { db: p.db, order: p.order, page: p.page, fresh: p.fresh ?? false, q: p.q ?? '' }),
+  searchCode: (q: string, db: string) =>
+    get<{ rows: { db: string; procedure: string; line: number; snippet: string }[]; q: string; truncated: boolean }>(
+      '/search/code', { q, db }),
   tableDetail: (objid: number, table: string) =>
     get<TableDetailResp>('/table', { objid, table }),
   tableSlices: (objid: number) =>

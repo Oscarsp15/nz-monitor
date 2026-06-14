@@ -136,6 +136,14 @@ def table_slices(objid: int) -> str:
             f"GROUP BY dsid HAVING SUM(used_bytes)>0 ORDER BY gb DESC LIMIT 12")
 
 
+def procedures_matching(db: str, like_safe: str) -> str:
+    # Procedimientos cuyo código contiene el texto (cross-DB vía {db}.._V_PROCEDURE).
+    # `like_safe` ya viene saneado (mayúsculas, comillas escapadas) desde el service.
+    return (f"SELECT PROCEDURE AS name, PROCEDURESOURCE AS source "
+            f"FROM {db}.._V_PROCEDURE WHERE BUILTIN=FALSE AND PROCEDURESOURCE IS NOT NULL "
+            f"AND UPPER(PROCEDURESOURCE) LIKE '%{like_safe}%'")
+
+
 def table_slices_occupied(objid: int) -> str:
     # nº REAL de dataslices que ocupa la tabla (la lista de barras va capada a 12 por gb).
     return (f"SELECT COUNT(*) AS n FROM (SELECT dsid FROM _V_SYS_OBJECT_DSLICE_INFO "
