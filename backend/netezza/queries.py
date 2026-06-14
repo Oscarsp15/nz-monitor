@@ -77,9 +77,14 @@ def tables(db: str | None, order: str, offset: int, search: str | None = None) -
     """
 
 
-def tables_on_dataslice(dsid: int, offset: int = 0) -> str:
-    # Tablas que ocupan UN dataslice, por GB en ese slice (validado vs Netezza). Las de skew alto
-    # son las candidatas a redistribuir/GROOM. Escanea solo dsid (1/Ndataslices de las filas).
+# columnas de orden para la vista "tablas en un dataslice"
+ORDER_COL_DS = {"ds": "i.used_bytes", "skew": "s.skew", "total": "s.used_bytes"}
+
+
+def tables_on_dataslice(dsid: int, offset: int = 0, order: str = "ds") -> str:
+    # Tablas que ocupan UN dataslice (validado vs Netezza). Las de skew alto son candidatas a
+    # redistribuir/GROOM. Escanea solo dsid (1/Ndataslices de las filas). Orden configurable.
+    oc = ORDER_COL_DS.get(order, "i.used_bytes")
     return f"""
       SELECT a.database AS dbname, a.schema AS schema, a.objname AS tablename, a.owner AS owner,
         a.objid AS objid, ROUND(s.skew,2) AS skew,
@@ -89,7 +94,7 @@ def tables_on_dataslice(dsid: int, offset: int = 0) -> str:
       JOIN _V_OBJ_RELATION_XDB a ON a.objid=i.tblid
       JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=i.tblid
       WHERE i.dsid={dsid} AND a.OBJTYPE='TABLE' AND i.used_bytes>0
-      ORDER BY i.used_bytes DESC LIMIT {PAGE + 1} OFFSET {offset}
+      ORDER BY {oc} DESC NULLS LAST LIMIT {PAGE + 1} OFFSET {offset}
     """
 
 

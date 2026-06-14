@@ -17,7 +17,13 @@ export function DataslicePage() {
   const ds = Number(id)
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
+  const [order, setOrder] = useState('ds')
   const freshRef = useRef(false)
+
+  const setOrderCol = (col: string) => {
+    setOrder(col)
+    setPage(0)
+  }
 
   // Estado del dataslice (de la lista, cacheada) para el encabezado.
   const dsList = useQuery({ queryKey: ['dataslices'], queryFn: () => api.dataslices() })
@@ -29,11 +35,11 @@ export function DataslicePage() {
   })
 
   const q = useQuery({
-    queryKey: ['ds-tables', ds, page],
+    queryKey: ['ds-tables', ds, page, order],
     queryFn: async () => {
       const fresh = freshRef.current
       freshRef.current = false
-      return api.datasliceTables({ ds, page, fresh })
+      return api.datasliceTables({ ds, page, fresh, order })
     },
     enabled: Number.isFinite(ds),
     placeholderData: keepPreviousData, // paginación suave (no re-esqueleto al cambiar de página)
@@ -123,9 +129,27 @@ export function DataslicePage() {
               <th className="th px-3 py-2">Tabla</th>
               <th className="th px-3 py-2">Base</th>
               <th className="th px-3 py-2">Owner</th>
-              <th className="th px-3 py-2 text-right">GB en ds {ds}</th>
-              <th className="th px-3 py-2 text-right">GB total</th>
-              <th className="th px-3 py-2 text-right">Skew</th>
+              <th
+                onClick={() => setOrderCol('ds')}
+                className={`th cursor-pointer select-none px-3 py-2 text-right hover:text-ink0 ${order === 'ds' ? 'text-ink0' : ''}`}
+              >
+                GB en ds {ds}
+                {order === 'ds' && <span className="ml-1 text-live">▾</span>}
+              </th>
+              <th
+                onClick={() => setOrderCol('total')}
+                className={`th cursor-pointer select-none px-3 py-2 text-right hover:text-ink0 ${order === 'total' ? 'text-ink0' : ''}`}
+              >
+                GB total
+                {order === 'total' && <span className="ml-1 text-live">▾</span>}
+              </th>
+              <th
+                onClick={() => setOrderCol('skew')}
+                className={`th cursor-pointer select-none px-3 py-2 text-right hover:text-ink0 ${order === 'skew' ? 'text-ink0' : ''}`}
+              >
+                Skew
+                {order === 'skew' && <span className="ml-1 text-live">▾</span>}
+              </th>
             </tr>
           </thead>
           <tbody>

@@ -146,10 +146,10 @@ export const api = {
     get<TableDetailResp>('/table', { objid, table }),
   tableSlices: (objid: number) =>
     get<{ slices: { ds: number; gb: number }[]; occupied: number }>('/table/slices', { objid }),
-  datasliceTables: (p: { ds: number; page: number; fresh?: boolean }) =>
-    get<{ rows: DsTableRow[]; has_next: boolean; ds: number; page: number } & Freshness>(
+  datasliceTables: (p: { ds: number; page: number; fresh?: boolean; order?: string }) =>
+    get<{ rows: DsTableRow[]; has_next: boolean; ds: number; page: number; order: string } & Freshness>(
       '/dataslice/tables',
-      { ds: p.ds, page: p.page, fresh: p.fresh ?? false },
+      { ds: p.ds, page: p.page, fresh: p.fresh ?? false, order: p.order ?? 'ds' },
     ),
   datasliceSummary: (ds: number) =>
     get<{ total: number; skewed: number; ds: number } & Freshness>('/dataslice/summary', { ds }),
