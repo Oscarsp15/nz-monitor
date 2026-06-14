@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { TrendPanel } from '../components/TrendChart'
 import { api, type AlertItem } from '../lib/api'
 
@@ -40,6 +41,7 @@ export function Alerts() {
   const satVals = (histSat.data?.points ?? []).map((p) => p.max_pct)
   const satLast = satVals[satVals.length - 1] ?? data?.max_dataslice_pct ?? 0
   const satColor = satLast >= 95 ? 'var(--crit)' : satLast >= 90 ? 'var(--warn)' : 'var(--live)'
+  const loading = q.isLoading || histSat.isLoading
 
   return (
     <div className="space-y-4">
@@ -51,13 +53,16 @@ export function Alerts() {
         <FreshnessSeal ageSeconds={q.data?.age_seconds ?? null} />
       </div>
 
+      {loading ? (
+        <PageSkeleton kpis={3} panels={2} />
+      ) : (
+      <div className="reveal space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        <KpiCard label="Críticas" value={String(crit)} loading={q.isLoading} />
-        <KpiCard label="En atención" value={String(warn)} loading={q.isLoading} />
+        <KpiCard label="Críticas" value={String(crit)} />
+        <KpiCard label="En atención" value={String(warn)} />
         <KpiCard
           label="Saturación máx"
           value={`${(data?.max_dataslice_pct ?? satLast ?? 0).toFixed(1)}%`}
-          loading={q.isLoading}
         />
       </div>
 
@@ -91,6 +96,8 @@ export function Alerts() {
             <Row key={i} a={a} onClick={a.ds ? () => navigate(`/dataslice/${a.ds}`) : undefined} />
           ))}
         </section>
+      )}
+      </div>
       )}
     </div>
   )

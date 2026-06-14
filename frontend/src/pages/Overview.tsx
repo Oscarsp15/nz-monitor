@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { StatusPill } from '../components/StatusPill'
 import { TrendPanel } from '../components/TrendChart'
 import { api } from '../lib/api'
@@ -29,6 +30,13 @@ export function Overview() {
   const satVals = satPts.map((p) => p.max_pct)
   const satLast = satVals[satVals.length - 1] ?? 0
   const satColor = satLast >= 95 ? 'var(--crit)' : satLast >= 90 ? 'var(--warn)' : 'var(--live)'
+  const loading =
+    space.isLoading ||
+    health.isLoading ||
+    alertsQ.isLoading ||
+    ds.isLoading ||
+    histSpace.isLoading ||
+    histSat.isLoading
 
   return (
     <div className="space-y-5">
@@ -40,10 +48,14 @@ export function Overview() {
         <FreshnessSeal ageSeconds={space.data?.age_seconds ?? null} />
       </div>
 
+      {loading ? (
+        <PageSkeleton kpis={5} panels={2} />
+      ) : (
+      <div className="reveal space-y-5">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <KpiCard label="Espacio total" value={gb(totalGb)} loading={space.isLoading} />
-        <KpiCard label="Tablas" value={int(totalTables)} loading={space.isLoading} />
-        <KpiCard label="Bases" value={int(dbs.length)} loading={space.isLoading} />
+        <KpiCard label="Espacio total" value={gb(totalGb)} />
+        <KpiCard label="Tablas" value={int(totalTables)} />
+        <KpiCard label="Bases" value={int(dbs.length)} />
         <button onClick={() => navigate('/alertas')} className="panel px-4 py-3 text-left">
           <div className="th">Alertas</div>
           <div
@@ -136,6 +148,8 @@ export function Overview() {
             </tbody>
           </table>
         </section>
+      )}
+      </div>
       )}
     </div>
   )

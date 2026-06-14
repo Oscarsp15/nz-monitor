@@ -28,6 +28,7 @@ export function TableDetail() {
   const error = detail.isError || slices.isError
   const meta = detail.data?.meta
   const sliceRows = slices.data?.slices ?? []
+  const occupied = slices.data?.occupied ?? sliceRows.length
   const maxGb = Math.max(0, ...sliceRows.map((s) => s.gb))
 
   return (
@@ -69,13 +70,16 @@ export function TableDetail() {
         <div className="reveal space-y-5">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             <KpiCard label="Espacio" value={gb(meta?.gb)} />
-            <KpiCard label="Skew" value={fixed(meta?.skew)} />
-            <KpiCard label="Dataslices ocupados" value={String(sliceRows.length)} />
+            <KpiCard label="Skew" value={fixed(meta?.skew)} sub="0 = parejo · alto = desigual" />
+            <KpiCard label="Dataslices ocupados" value={String(occupied)} sub="de 192 (≠ skew)" />
           </div>
 
           <section className="panel overflow-hidden">
             <div className="border-b border-line px-4 py-2.5">
-              <h2 className="th">Dataslices que ocupa</h2>
+              <h2 className="th">
+                Dataslices más cargados
+                {occupied > sliceRows.length ? ` · top ${sliceRows.length} de ${occupied}` : ''}
+              </h2>
             </div>
             <div className="space-y-1 p-3">
               {sliceRows.map((s) => (

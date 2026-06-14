@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ExportButton, SearchInput } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { RefreshButton } from '../components/RefreshButton'
 import { SkewBadge } from '../components/SkewBadge'
 import { api, type TableRow } from '../lib/api'
@@ -47,6 +48,7 @@ export function Tables() {
       freshRef.current = false
       return api.tables({ db, order, page, fresh, q: search })
     },
+    placeholderData: keepPreviousData, // paginación/búsqueda suave (sin re-esqueleto)
   })
 
   const refreshNow = () => {
@@ -64,8 +66,11 @@ export function Tables() {
   const summary = useQuery({
     queryKey: ['dbsummary', db],
     queryFn: () => api.dbSummary(db),
+    placeholderData: keepPreviousData,
   })
 
+  // Carga ATÓMICA: esqueleto hasta que KPIs y tabla estén listos (solo primera carga).
+  const loading = q.isLoading || summary.isLoading || dbsQ.isLoading
   const rows = q.data?.rows ?? []
 
   const doExport = () => {
@@ -100,6 +105,10 @@ export function Tables() {
         </div>
       </div>
 
+      {loading ? (
+        <PageSkeleton kpis={3} />
+      ) : (
+      <div className="reveal space-y-4">
       {/* Dashboard de la base seleccionada */}
       <div className="grid grid-cols-3 gap-3">
         <KpiCard
@@ -237,6 +246,8 @@ export function Tables() {
           <ChevronRight size={16} />
         </button>
       </div>
+      </div>
+      )}
     </div>
   )
 }

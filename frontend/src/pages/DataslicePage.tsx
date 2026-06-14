@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ExportButton } from '../components/SearchInput'
 import { KpiCard } from '../components/KpiCard'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { RefreshButton } from '../components/RefreshButton'
 import { SkewBadge } from '../components/SkewBadge'
 import { api, type DsTableRow } from '../lib/api'
@@ -35,13 +36,15 @@ export function DataslicePage() {
       return api.datasliceTables({ ds, page, fresh })
     },
     enabled: Number.isFinite(ds),
+    placeholderData: keepPreviousData, // paginación suave (no re-esqueleto al cambiar de página)
   })
   const refreshNow = () => {
     freshRef.current = true
     q.refetch()
   }
 
-  const loading = q.isLoading || dsList.isLoading
+  // Carga ATÓMICA: esqueleto hasta que TODAS las consultas de primer carga terminen.
+  const loading = q.isLoading || dsList.isLoading || sum.isLoading
   const rows = q.data?.rows ?? []
   const pct = info?.pct ?? 0
   const pctColor = pct >= 95 ? 'var(--crit)' : pct >= 90 ? 'var(--warn)' : 'var(--live)'
@@ -84,6 +87,10 @@ export function DataslicePage() {
         </p>
       </div>
 
+      {loading ? (
+        <PageSkeleton kpis={4} />
+      ) : (
+      <div className="reveal space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="panel px-4 py-3">
           <div className="th">Saturación</div>
@@ -179,6 +186,8 @@ export function DataslicePage() {
           <ChevronRight size={16} />
         </button>
       </div>
+      </div>
+      )}
     </div>
   )
 }
