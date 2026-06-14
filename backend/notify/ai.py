@@ -120,8 +120,9 @@ def _dataslice_analysis(worst: dict) -> str | None:
     gb_drop = sum(float(r.get("gb_ds") or 0) for r in drop)
     gb_redis = sum(float(r.get("gb_ds") or 0) for r in redis)
     top = "; ".join(f"{r['table']} (skew {r['skew']}, {r['gb_ds']}GB en ds)" for r in mal[:6])
-    prompt = (  # noqa: S608 — es un prompt para la IA, no una consulta SQL ejecutada
-        f"Eres DBA de Netezza. El dataslice {ds} esta al {worst.get('value')}% (casi lleno). "
+    # nota: el texto incluye ejemplos de SQL pero es un PROMPT para la IA, no una query ejecutada
+    prompt = (
+        f"Eres DBA de Netezza. El dataslice {ds} esta al {worst.get('value')}% (casi lleno). "  # noqa: S608
         f"Tablas peor distribuidas que lo cargan: {top}. De ellas, {len(drop)} parecen "
         f"temporales/scratch ({gb_drop:.2f}GB en este slice, candidatas a DROP) y {len(redis)} "
         f"estan en uso ({gb_redis:.2f}GB, hay que redistribuir por una columna de alta "
