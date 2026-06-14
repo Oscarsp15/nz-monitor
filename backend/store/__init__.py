@@ -2,9 +2,11 @@
 from .settings_store import (
     get_groq,
     get_setting,
+    get_sftp,
     get_telegram,
     set_groq,
     set_setting,
+    set_sftp,
     set_telegram,
 )
 from .snapshots import get_db_path, init_db, latest_snapshot, save_snapshot, snapshot_history
@@ -12,4 +14,5 @@ from .snapshots import get_db_path, init_db, latest_snapshot, save_snapshot, sna
 __all__ = [
     "get_db_path", "init_db", "latest_snapshot", "save_snapshot", "snapshot_history",
     "get_setting", "set_setting", "get_telegram", "set_telegram", "get_groq", "set_groq",
+    "get_sftp", "set_sftp",
 ]

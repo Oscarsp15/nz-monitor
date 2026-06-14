@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     telegram_chat_id: str = ""
     groq_api_key: str = ""  # IA opcional (alertas inteligentes); se configura desde la web
 
+    # SFTP (timeouts; credenciales se configuran cifradas desde la web)
+    sftp_connection_timeout: int = 15
+    sftp_command_timeout: int = 30
+
     # caché de endpoints pasivos / "en vivo" (cache-aside; lo salta ?fresh=true)
     overview_ttl: int = 30
     tables_ttl: int = 60

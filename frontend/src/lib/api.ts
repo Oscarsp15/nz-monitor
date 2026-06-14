@@ -159,6 +159,15 @@ export interface AiCfg {
   assistant: boolean
 }
 
+export interface SftpCfg {
+  host: string
+  port: number
+  user: string
+  has_password: boolean
+  has_key: boolean
+  configured: boolean
+}
+
 export const api = {
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
   getTelegram: () => get<TelegramCfg>('/settings/telegram'),
@@ -171,6 +180,20 @@ export const api = {
   testAi: () => mutate<{ ok: boolean; sample: string | null }>('POST', '/settings/ai/test'),
   aiChat: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
     mutate<{ answer: string | null; error?: string }>('POST', '/ai/chat', { messages }),
+  // ─── SFTP ───
+  sftpDisk: (path: string) =>
+    get<{ path: string; filesystem?: string; size?: string; used?: string; available?: string;
+      use_percent?: string; mounted_on?: string; error?: string }>('/sftp/disk', { path }),
+  sftpDu: (path: string, top = 20) =>
+    get<{ rows: { size: string; path: string }[] }>('/sftp/du', { path, top }),
+  sftpOldFiles: (p: { path: string; days: number; pattern: string; max: number }) =>
+    get<{ rows: { permissions: string; size: string; modified: string; path: string }[] }>(
+      '/sftp/old-files', p),
+  getSftp: () =>
+    get<SftpCfg>('/settings/sftp'),
+  saveSftp: (b: { host?: string; port?: number; user?: string; password?: string }) =>
+    mutate<SftpCfg>('PUT', '/settings/sftp', b),
+  testSftp: () => mutate<{ status: string; host?: string; error?: string }>('POST', '/settings/sftp/test'),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
   dbSummary: (db: string, fresh = false) =>
     get<{ table_count: number; total_gb: number; skewed: number; database: string | null } & Freshness>(

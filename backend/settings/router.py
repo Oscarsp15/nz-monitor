@@ -6,7 +6,17 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 import notify
-from store import get_groq, get_setting, get_telegram, set_groq, set_setting, set_telegram
+from sftp import service as sftp_service
+from store import (
+    get_groq,
+    get_setting,
+    get_sftp,
+    get_telegram,
+    set_groq,
+    set_setting,
+    set_sftp,
+    set_telegram,
+)
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -68,3 +78,35 @@ def ai_put(body: AiIn):
 def ai_test():
     txt = notify.ai.ask("Responde en una sola linea, en espanol: 'Conexion con la IA correcta.'")
     return {"ok": txt is not None, "sample": txt}
+
+
+# ─── SFTP ───
+class SftpIn(BaseModel):
+    host: str | None = None
+    port: int | None = None
+    user: str | None = None
+    password: str | None = None  # opcional: si no se manda, se conserva
+    private_key: str | None = None
+
+
+def _sftp_state() -> dict:
+    c = get_sftp()
+    return {"host": c["host"], "port": c["port"], "user": c["user"],
+            "has_password": bool(c["password"]), "has_key": bool(c["private_key"]),
+            "configured": bool(c["host"] and c["user"])}
+
+
+@router.get("/sftp")
+def sftp_get():
+    return _sftp_state()
+
+
+@router.put("/sftp")
+def sftp_put(body: SftpIn):
+    set_sftp(body.host, body.port, body.user, body.password, body.private_key)
+    return _sftp_state()
+
+
+@router.post("/sftp/test")
+def sftp_test():
+    return sftp_service.health()

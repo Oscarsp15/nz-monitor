@@ -8,7 +8,8 @@ import { Dataslices } from './pages/Dataslices'
 import { Overview } from './pages/Overview'
 import { Owners } from './pages/Owners'
 import { Settings } from './pages/Settings'
-import { SftpPlaceholder } from './pages/SftpPlaceholder'
+import { SftpDisk } from './pages/SftpDisk'
+import { SftpOldFiles } from './pages/SftpOldFiles'
 import { TableDetail } from './pages/TableDetail'
 import { Tables } from './pages/Tables'
 
@@ -23,8 +24,8 @@ const router = createBrowserRouter([
       { path: 'dataslice/:id', element: <DataslicePage /> },
       { path: 'owners', element: <Owners /> },
       { path: 'sftp', element: <Navigate to="/sftp/disco" replace /> },
-      { path: 'sftp/disco', element: <SftpPlaceholder /> },
-      { path: 'sftp/archivos', element: <SftpPlaceholder /> },
+      { path: 'sftp/disco', element: <SftpDisk /> },
+      { path: 'sftp/archivos', element: <SftpOldFiles /> },
       { path: 'alertas', element: <Alerts /> },
       { path: 'asistente', element: <Chat /> },
       { path: 'tabla/:objid', element: <TableDetail /> },
