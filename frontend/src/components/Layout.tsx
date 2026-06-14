@@ -35,11 +35,12 @@ const DOMAINS: Domain[] = [
     label: 'Netezza',
     icon: Database,
     to: '/tablas',
-    prefixes: ['/tablas', '/owners', '/dataslices', '/tabla/', '/dataslice/'],
+    prefixes: ['/tablas', '/owners', '/dataslices', '/buscar', '/tabla/', '/dataslice/'],
     subtabs: [
       { to: '/tablas', label: 'Tablas' },
       { to: '/owners', label: 'Owners' },
       { to: '/dataslices', label: 'Dataslices' },
+      { to: '/buscar', label: 'Buscar' },
     ],
   },
   {

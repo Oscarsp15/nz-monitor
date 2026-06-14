@@ -217,6 +217,34 @@ def table_slices(objid: int):
             "occupied": int(occ[0]["n"] or 0) if occ else len(rows)}
 
 
+def search_code(text: str, db: str | None = None, limit: int = 200):
+    """Busca texto en el código de los stored procedures (cross-DB). Línea + snippet por match."""
+    text = (text or "").strip()
+    if len(text) < 2:
+        return {"rows": [], "q": text, "truncated": False}
+    db = safe_db(db)
+    parts = [p for p in text.split() if p][:12]
+    # whitespace-agnóstico; comillas escapadas para el LIKE
+    like = "%".join(p.replace("'", "''").upper() for p in parts)
+    rx = re.compile(r"\s+".join(re.escape(p) for p in parts), re.IGNORECASE)
+    dbs = [db] if db else databases()
+    rows: list[dict] = []
+    for d in dbs:
+        try:
+            procs = run(q.procedures_matching(d, like))
+        except Exception:  # noqa: BLE001, S112 — una base sin permiso no rompe la búsqueda
+            continue
+        for p in procs:
+            src = p.get("source") or ""
+            for i, line in enumerate(src.split("\n")):
+                if rx.search(line):
+                    rows.append({"db": d, "procedure": p.get("name"),
+                                 "line": i + 1, "snippet": line.strip()[:300]})
+                    if len(rows) >= limit:
+                        return {"rows": rows, "q": text, "truncated": True}
+    return {"rows": rows, "q": text, "truncated": False}
+
+
 def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False, order: str = "ds"):
     """Tablas que ocupan un dataslice (las de skew alto son candidatas a redistribuir)."""
     dsid = dsid if 0 < dsid < 100000 else 1
