@@ -27,8 +27,9 @@ node_modules/
 dist/
 .vite/
 
-# ─── Demo: lanzador local (rutas/secretos locales) y capturas ───
+# ─── Lanzadores locales (rutas/secretos locales) y capturas ───
 demo/_run_local.py
+backend/_run_local.py
 demo/preview*.png
 demo/shot_*.png
 
