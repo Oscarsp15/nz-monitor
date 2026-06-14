@@ -63,38 +63,43 @@ def _dataslice_alerts() -> tuple[list[dict], float]:
     return alerts, max_pct
 
 
-def _sftp_disk_alerts() -> list[dict]:
-    """Alerta de disco SFTP (ruta por defecto) si supera el umbral. Sin SFTP configurado → []."""
+def _sftp_reading() -> dict | None:
+    """Lectura de disco SFTP de la ruta por defecto (siempre, para el dashboard)."""
     from store import get_sftp  # import perezoso: SFTP es opcional
     cfg = get_sftp()
     if not cfg["host"]:
-        return []
+        return None
     from sftp import service as sftp_service
     path = cfg["default_path"] or "/"
     try:
         d = sftp_service.disk_usage(path)
     except Exception:  # noqa: BLE001 — SFTP caído no rompe las alertas de Netezza
-        return []
+        return None
     if d.get("error"):
-        return []
+        return None
     try:
         pct = float((d.get("use_percent") or "0").replace("%", ""))
     except ValueError:
-        return []
-    level = "crit" if pct >= SFTP_CRIT else "warn" if pct >= SFTP_WARN else None
-    if not level:
-        return []
-    msg = f"Disco SFTP {path} al {pct:.0f}% ({d.get('used')}/{d.get('size')})"
-    return [{"level": level, "kind": "sftp_disk", "key": f"sftp:{path}", "path": path,
-             "value": round(pct, 1), "message": msg}]
+        return None
+    return {"path": path, "pct": round(pct, 1), "used": d.get("used"),
+            "size": d.get("size"), "available": d.get("available")}
 
 
 def collect_alerts() -> Any:
     """Alertas: dataslices saturados + disco SFTP (si está configurado)."""
     alerts, max_pct = _dataslice_alerts()
-    alerts += _sftp_disk_alerts()
+    sftp = _sftp_reading()
+    if sftp:
+        pct = sftp["pct"]
+        level = "crit" if pct >= SFTP_CRIT else "warn" if pct >= SFTP_WARN else None
+        if level:
+            alerts.append({"level": level, "kind": "sftp_disk", "key": f"sftp:{sftp['path']}",
+                           "path": sftp["path"], "value": pct,
+                           "message": f"Disco SFTP {sftp['path']} al {pct:.0f}% "
+                                      f"({sftp['used']}/{sftp['size']})"})
     alerts.sort(key=lambda a: a["value"], reverse=True)
-    return {"alerts": alerts, "count": len(alerts), "max_dataslice_pct": round(max_pct, 1)}
+    return {"alerts": alerts, "count": len(alerts), "max_dataslice_pct": round(max_pct, 1),
+            "sftp": sftp}
 
 
 def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | None = None) -> dict:

@@ -99,6 +99,7 @@ export interface AlertsData {
   alerts: AlertItem[]
   count: number
   max_dataslice_pct: number
+  sftp?: { path: string; pct: number; used: string; size: string; available: string } | null
 }
 
 export interface OwnerRow {
