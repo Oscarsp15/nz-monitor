@@ -51,12 +51,21 @@ Abrir: http://localhost:8080
 ## Estructura
 ```
 nz-monitor-v2/
-├─ AGENTS.md ARCHITECTURE.md ROADMAP.md DEVELOPMENT.md README.md
+├─ AGENTS.md ARCHITECTURE.md ROADMAP.md DEVELOPMENT.md NETEZZA.md DESIGN.md README.md
 ├─ docker-compose.yml  pyproject.toml  .pre-commit-config.yaml  .env.example
-└─ backend/
-   ├─ requirements.txt  Dockerfile
-   ├─ netezza/connection.py     # nzpy + pool
-   ├─ collector/                # recolector (APScheduler) [pendiente]
-   ├─ cache/                    # CacheBackend / EventBus [pendiente]
-   └─ drivers/nzjdbc.jar        # fallback JDBC opcional
+├─ backend/
+│  ├─ requirements.txt  Dockerfile  main.py  config.py
+│  ├─ netezza/          # nzpy + pool, queries probadas, ruta "en vivo" (?fresh=true)
+│  ├─ collector/        # recolector (APScheduler, proceso único): jobs + __main__
+│  ├─ cache/            # CacheBackend / EventBus (memoria hoy, Redis al escalar)
+│  ├─ store/            # snapshots en SQLite (metric_snapshot)
+│  ├─ monitoring/       # endpoints PASIVOS (leen snapshots, no tocan Netezza)
+│  └─ drivers/nzjdbc.jar # fallback JDBC opcional
+└─ tests/               # pytest (cache, snapshots, recolector, pasivo, fresh)
 ```
+
+## Endpoints (Fase 2/3)
+- **Pasivos** (leen snapshots, sin tocar Netezza): `GET /api/monitoring/health`, `GET /api/monitoring/space`.
+- **En vivo / análisis** (caché con bypass): `GET /api/overview|tables|owners|dataslices?fresh=true`
+  ("Actualizar ahora"), `GET /api/table`, `GET /api/table/slices`.
+- El recolector (`python -m collector`) refresca salud y espacio cada N segundos (ver `.env`).

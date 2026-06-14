@@ -1,10 +1,12 @@
 """Endpoints de observabilidad de Netezza (router fino; la lógica vive en service.py).
 
+`fresh=true` = botón "Actualizar ahora": salta la caché y consulta Netezza en vivo (AGENTS §2/§8).
 TODO(prod): proteger con auth (Depends get_current_user) — ver AGENTS.md §9.
 """
 from fastapi import APIRouter
 
 from config import get_settings
+
 from . import service
 
 router = APIRouter(prefix="/api", tags=["netezza"])
@@ -17,23 +19,23 @@ def databases():
 
 
 @router.get("/overview")
-def overview(db: str | None = None):
-    return service.overview(db)
+def overview(db: str | None = None, fresh: bool = False):
+    return service.overview(db, fresh)
 
 
 @router.get("/dataslices")
-def dataslices():
-    return service.dataslices()
+def dataslices(fresh: bool = False):
+    return service.dataslices(fresh)
 
 
 @router.get("/owners")
-def owners(db: str | None = None):
-    return service.owners(db)
+def owners(db: str | None = None, fresh: bool = False):
+    return service.owners(db, fresh)
 
 
 @router.get("/tables")
-def tables(db: str | None = None, ds: int = 1, order: str = "space", page: int = 0):
-    return service.tables(db, ds, order, page)
+def tables(db: str | None = None, ds: int = 1, order: str = "space", page: int = 0, fresh: bool = False):
+    return service.tables(db, ds, order, page, fresh)
 
 
 @router.get("/table")
