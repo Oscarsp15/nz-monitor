@@ -34,8 +34,9 @@ def owners(db: str | None = None, fresh: bool = False):
 
 
 @router.get("/tables")
-def tables(db: str | None = None, order: str = "space", page: int = 0, fresh: bool = False):
-    return service.tables(db, order, page, fresh)
+def tables(db: str | None = None, order: str = "space", page: int = 0,
+           fresh: bool = False, q: str | None = None):
+    return service.tables(db, order, page, fresh, q)
 
 
 @router.get("/table")

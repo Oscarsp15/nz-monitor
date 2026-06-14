@@ -40,7 +40,14 @@ def owners(db: str | None) -> str:
             f"WHERE a.OBJTYPE='TABLE'{_where_db(db)} GROUP BY a.owner ORDER BY gb DESC NULLS LAST")
 
 
-def tables(db: str | None, order: str, offset: int) -> str:
+def _search_clause(search: str | None) -> str:
+    # `search` ya viene saneado en el service (solo [A-Z0-9_ ]) → seguro para LIKE.
+    if not search:
+        return ""
+    return f" AND (UPPER(a.objname) LIKE '%{search}%' OR UPPER(a.owner) LIKE '%{search}%')"
+
+
+def tables(db: str | None, order: str, offset: int, search: str | None = None) -> str:
     # `skew` = (máx − promedio)/promedio de bytes sobre todos los dataslices (validado vs Netezza):
     # 0=balanceada, 45=un dataslice con 45× el promedio, ~Ndataslices=toda en uno. Ver NETEZZA.md.
     oc = ORDER_COL.get(order, "gb")
@@ -58,7 +65,7 @@ def tables(db: str | None, order: str, offset: int) -> str:
       FROM _V_OBJ_RELATION_XDB a
       JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=a.objid
       {dist_join}
-      WHERE a.OBJTYPE='TABLE'{_where_db(db)}
+      WHERE a.OBJTYPE='TABLE'{_where_db(db)}{_search_clause(search)}
       ORDER BY {oc} DESC NULLS LAST LIMIT {PAGE + 1} OFFSET {offset}
     """
 

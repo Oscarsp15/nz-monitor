@@ -11,12 +11,14 @@ export function Overview() {
   const navigate = useNavigate()
   const space = useQuery({ queryKey: ['mon', 'space'], queryFn: api.monitoringSpace })
   const health = useQuery({ queryKey: ['mon', 'health'], queryFn: api.monitoringHealth })
+  const alertsQ = useQuery({ queryKey: ['mon', 'alerts'], queryFn: api.monitoringAlerts })
   const ds = useQuery({ queryKey: ['dataslices'], queryFn: () => api.dataslices() })
 
   const dbs = space.data?.data?.databases ?? []
   const totalGb = dbs.reduce((a, d) => a + d.gb, 0)
   const totalTables = dbs.reduce((a, d) => a + d.table_count, 0)
   const maxPct = Math.max(0, ...(ds.data?.rows ?? []).map((r) => r.pct))
+  const alertCount = alertsQ.data?.data?.alerts?.length ?? 0
 
   return (
     <div className="space-y-5">
@@ -28,18 +30,28 @@ export function Overview() {
         <FreshnessSeal ageSeconds={space.data?.age_seconds ?? null} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard label="Espacio total" value={gb(totalGb)} loading={space.isLoading} />
         <KpiCard label="Tablas" value={int(totalTables)} loading={space.isLoading} />
         <KpiCard label="Bases" value={int(dbs.length)} loading={space.isLoading} />
+        <button onClick={() => navigate('/alertas')} className="panel px-4 py-3 text-left">
+          <div className="th">Alertas</div>
+          <div
+            className="mt-1 font-data text-kpi"
+            style={{ color: alertCount ? 'var(--crit)' : 'var(--ok)' }}
+          >
+            {alertsQ.isLoading ? '···' : alertCount}
+          </div>
+          <div className="mt-0.5 font-data text-micro text-ink2">
+            saturación máx. {maxPct ? `${maxPct.toFixed(0)}%` : '—'}
+          </div>
+        </button>
         <div className="panel px-4 py-3">
           <div className="th">Conexión</div>
           <div className="mt-2">
             <StatusPill status={health.data?.status ?? 'empty'} />
           </div>
-          <div className="mt-1 font-data text-micro text-ink2">
-            saturación máx. dataslice: {maxPct ? `${maxPct.toFixed(0)}%` : '—'}
-          </div>
+          <div className="mt-1 font-data text-micro text-ink2">vigilancia pasiva</div>
         </div>
       </div>
 
@@ -52,12 +64,12 @@ export function Overview() {
           </p>
         </div>
       ) : (
-        <section className="panel overflow-hidden">
+        <section className="panel overflow-x-auto">
           <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
             <h2 className="th">Espacio por base de datos</h2>
             <span className="font-data text-micro text-ink2">{dbs.length} bases</span>
           </div>
-          <table className="w-full">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-line-strong">
                 <th className="th px-4 py-2">Base</th>

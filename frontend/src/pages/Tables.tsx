@@ -3,11 +3,15 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
+import { ExportButton, SearchInput } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
+import { KpiCard } from '../components/KpiCard'
 import { RefreshButton } from '../components/RefreshButton'
 import { SkewBadge } from '../components/SkewBadge'
-import { api } from '../lib/api'
+import { api, type TableRow } from '../lib/api'
+import { exportToExcel, stamp } from '../lib/exportXlsx'
 import { ageFromAt, gb } from '../lib/format'
+import { useDebounced } from '../hooks/useDebounced'
 import { useLiveMode } from '../hooks/useLiveMode'
 
 const COLS: { key: string; label: string; order?: string; num?: boolean }[] = [
@@ -27,6 +31,8 @@ export function Tables() {
   const db = sp.get('db') || '*'
   const [order, setOrder] = useState('space')
   const [page, setPage] = useState(0)
+  const [searchRaw, setSearchRaw] = useState('')
+  const search = useDebounced(searchRaw.trim())
   const freshRef = useRef(false)
 
   const setDb = (value: string) => {
@@ -35,11 +41,11 @@ export function Tables() {
   }
 
   const q = useQuery({
-    queryKey: ['tables', db, order, page],
+    queryKey: ['tables', db, order, page, search],
     queryFn: async () => {
       const fresh = freshRef.current
       freshRef.current = false
-      return api.tables({ db, order, page, fresh })
+      return api.tables({ db, order, page, fresh, q: search })
     },
   })
 
@@ -56,6 +62,25 @@ export function Tables() {
   }
 
   const rows = q.data?.rows ?? []
+  const pageGb = rows.reduce((a, r) => a + r.space_gb, 0)
+  const maxSkew = Math.max(0, ...rows.map((r) => r.skew))
+
+  const doExport = () => {
+    exportToExcel<TableRow>(
+      `tablas_${db === '*' ? 'todas' : db}_${stamp()}.xlsx`,
+      rows,
+      [
+        { header: 'Base', value: (r) => r.db ?? '' },
+        { header: 'Esquema', value: (r) => r.schema ?? '' },
+        { header: 'Tabla', value: (r) => r.table ?? '' },
+        { header: 'Owner', value: (r) => r.owner ?? '' },
+        { header: 'Distribución', value: (r) => r.distribute_on },
+        { header: 'Espacio GB', value: (r) => r.space_gb },
+        { header: 'Skew', value: (r) => r.skew },
+      ],
+      'Tablas',
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -70,6 +95,13 @@ export function Tables() {
           <FreshnessSeal ageSeconds={ageFromAt(q.data?.at)} live={live} />
           <RefreshButton onClick={refreshNow} busy={q.isFetching} />
         </div>
+      </div>
+
+      {/* Métricas de la página */}
+      <div className="grid grid-cols-3 gap-3">
+        <KpiCard label="Tablas (página)" value={String(rows.length)} loading={q.isLoading} />
+        <KpiCard label="Espacio (página)" value={gb(pageGb)} loading={q.isLoading} />
+        <KpiCard label="Skew máx (página)" value={maxSkew.toFixed(2)} loading={q.isLoading} />
       </div>
 
       {/* Controles */}
@@ -89,6 +121,15 @@ export function Tables() {
             ))}
           </select>
         </label>
+        <SearchInput
+          value={searchRaw}
+          onChange={(v) => {
+            setSearchRaw(v)
+            setPage(0)
+          }}
+          placeholder="Tabla u owner…"
+        />
+        <ExportButton onClick={doExport} disabled={rows.length === 0} />
         <label className="ml-auto flex cursor-pointer items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1">
           <input
             type="checkbox"
