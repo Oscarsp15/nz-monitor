@@ -103,7 +103,12 @@ SYSTEM = (
     "distribuida); para liberar/optimizar conviene redistribuir las de mayor skew (por columna de "
     "alta cardinalidad) o GROOM, y DROP si son temporales/scratch.\n"
     "FORMATO para Telegram (texto plano, SIN markdown ni asteriscos): frases cortas; las listas, "
-    "una por línea con viñeta '•'; al listar tablas pon 'base.tabla — skew X, Y GB'. Sé conciso."
+    "una por línea con viñeta '•'; al listar tablas pon 'base.tabla — skew X, Y GB'. Sé conciso.\n"
+    "SQL ACCIONABLE: cuando recomiendes corregir distribución o liberar espacio, incluye el SQL "
+    "listo para copiar (Netezza usa 'base..tabla'): redistribuir → "
+    "CREATE TABLE base..tabla_new AS SELECT * FROM base..tabla DISTRIBUTE ON (columna); "
+    "reclamar espacio tras borrados → GROOM TABLE base..tabla; eliminar temporal → "
+    "DROP TABLE base..tabla; . Sugiere la columna de distribución pero recuerda validarla."
 )
 
 

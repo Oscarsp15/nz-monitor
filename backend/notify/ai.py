@@ -120,12 +120,14 @@ def _dataslice_analysis(worst: dict) -> str | None:
     gb_drop = sum(float(r.get("gb_ds") or 0) for r in drop)
     gb_redis = sum(float(r.get("gb_ds") or 0) for r in redis)
     top = "; ".join(f"{r['table']} (skew {r['skew']}, {r['gb_ds']}GB en ds)" for r in mal[:6])
-    prompt = (
+    prompt = (  # noqa: S608 — es un prompt para la IA, no una consulta SQL ejecutada
         f"Eres DBA de Netezza. El dataslice {ds} esta al {worst.get('value')}% (casi lleno). "
         f"Tablas peor distribuidas que lo cargan: {top}. De ellas, {len(drop)} parecen "
         f"temporales/scratch ({gb_drop:.2f}GB en este slice, candidatas a DROP) y {len(redis)} "
         f"estan en uso ({gb_redis:.2f}GB, hay que redistribuir por una columna de alta "
-        f"cardinalidad o hacer GROOM). Escribe SOLO 3 lineas en espanol, tono ejecutivo, sin "
-        f"markdown, accionable, usando estos numeros (no inventes otros)."
+        f"cardinalidad o hacer GROOM). Escribe 3 lineas en espanol, tono ejecutivo, sin markdown, "
+        f"usando estos numeros (no inventes otros), y al final UNA linea de SQL sugerido "
+        f"(GROOM TABLE base..tabla;  o  CREATE TABLE base..tabla_new AS SELECT * FROM base..tabla "
+        f"DISTRIBUTE ON (columna);)."
     )
     return ask(prompt)
