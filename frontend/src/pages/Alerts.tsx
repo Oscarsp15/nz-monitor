@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ChevronRight, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ChevronRight, HardDrive, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { FreshnessSeal } from '../components/FreshnessSeal'
@@ -12,6 +12,7 @@ const COLOR = { warn: 'var(--warn)', crit: 'var(--crit)' } as const
 
 function Row({ a, onClick }: { a: AlertItem; onClick?: () => void }) {
   const c = COLOR[a.level]
+  const Icon = a.kind === 'sftp_disk' ? HardDrive : AlertTriangle
   return (
     <div
       onClick={onClick}
@@ -20,7 +21,7 @@ function Row({ a, onClick }: { a: AlertItem; onClick?: () => void }) {
       }`}
       style={{ borderLeft: `2px solid ${c}` }}
     >
-      <AlertTriangle size={15} strokeWidth={1.8} style={{ color: c }} />
+      <Icon size={15} strokeWidth={1.8} style={{ color: c }} />
       <span className="flex-1 text-body text-ink0">{a.message}</span>
       <span className="num text-body" style={{ color: c }}>
         {a.value}%
@@ -48,7 +49,7 @@ export function Alerts() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-dense text-lg font-semibold text-ink0">Alertas</h1>
-          <p className="text-body text-ink1">Dataslices cerca de llenarse (≥90% atención · ≥95% crítico).</p>
+          <p className="text-body text-ink1">Dataslices saturados y disco SFTP cerca de llenarse.</p>
         </div>
         <FreshnessSeal ageSeconds={q.data?.age_seconds ?? null} />
       </div>

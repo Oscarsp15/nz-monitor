@@ -75,13 +75,38 @@ def chat(messages: list[dict], tools: list[dict] | None = None,
 
 
 def alert_analysis(crit_alerts: list[dict]) -> str | None:
-    """Recomendación IA para el dataslice crítico más cargado y sus tablas culpables."""
-    if not enabled() or not crit_alerts:  # sin IA activa, ni siquiera consultamos Netezza
+    """Recomendación IA para la alerta crítica más severa (dataslice o disco SFTP)."""
+    if not enabled() or not crit_alerts:  # sin IA activa, ni siquiera consultamos
         return None
     worst = max(crit_alerts, key=lambda a: a.get("value", 0))
-    ds = worst.get("ds")
-    if ds is None:
+    if worst.get("kind") == "sftp_disk":
+        return _sftp_analysis(worst)
+    if worst.get("ds") is not None:
+        return _dataslice_analysis(worst)
+    return None
+
+
+def _sftp_analysis(worst: dict) -> str | None:
+    from sftp import service as sftp_service
+    path = worst.get("path") or "/"
+    try:
+        top = sftp_service.du_top(path, 8)
+        old = sftp_service.old_files(path, 180, "*", 30)
+    except Exception as e:  # noqa: BLE001
+        log.warning("[groq] sin contexto sftp: %s", e)
         return None
+    folders = "; ".join(f"{r['size']} {r['path']}" for r in top) or "n/d"
+    prompt = (
+        f"Eres administrador de sistemas. El disco SFTP {path} esta al {worst.get('value')}% "
+        f"(casi lleno). Carpetas mas pesadas: {folders}. Hay {len(old)} archivos de mas de 180 "
+        f"dias. Escribe SOLO 3 lineas en espanol, sin markdown, accionable: que carpetas o "
+        f"archivos revisar/limpiar para liberar espacio (usa los datos, no inventes)."
+    )
+    return ask(prompt)
+
+
+def _dataslice_analysis(worst: dict) -> str | None:
+    ds = worst.get("ds")
     try:
         rows = service.tables_on_dataslice(int(ds), order="skew").get("rows", [])
     except Exception as e:  # noqa: BLE001
