@@ -81,6 +81,21 @@ def owners(db: str | None, fresh: bool = False):
     return {"rows": out, "database": db, "at": at, "from_cache": cached}
 
 
+def db_summary(db: str | None, fresh: bool = False):
+    """Resumen de una base (o todas): nº tablas, espacio total y tablas mal distribuidas."""
+    db = safe_db(db)
+
+    def produce():
+        ov = run(q.overview(db))[0]
+        sk = run(q.skewed_count(db))[0]
+        return {"table_count": int(ov["table_count"] or 0),
+                "total_gb": float(ov["total_gb"] or 0),
+                "skewed": int(sk["n"] or 0)}
+
+    val, at, cached = _cached(("dbsum", db), S.tables_ttl, produce, fresh)
+    return {**val, "database": db, "at": at, "from_cache": cached}
+
+
 def space_by_db() -> list[dict]:
     """Espacio + nº de tablas por base (todas). Query pesada → la usa el recolector, no la API."""
     rows = run(q.SQL_SPACE_BY_DB)

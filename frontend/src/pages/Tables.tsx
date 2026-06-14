@@ -10,7 +10,7 @@ import { RefreshButton } from '../components/RefreshButton'
 import { SkewBadge } from '../components/SkewBadge'
 import { api, type TableRow } from '../lib/api'
 import { exportToExcel, stamp } from '../lib/exportXlsx'
-import { ageFromAt, gb } from '../lib/format'
+import { ageFromAt, gb, int } from '../lib/format'
 import { useDebounced } from '../hooks/useDebounced'
 import { useLiveMode } from '../hooks/useLiveMode'
 
@@ -61,9 +61,12 @@ export function Tables() {
     setPage(0)
   }
 
+  const summary = useQuery({
+    queryKey: ['dbsummary', db],
+    queryFn: () => api.dbSummary(db),
+  })
+
   const rows = q.data?.rows ?? []
-  const pageGb = rows.reduce((a, r) => a + r.space_gb, 0)
-  const maxSkew = Math.max(0, ...rows.map((r) => r.skew))
 
   const doExport = () => {
     exportToExcel<TableRow>(
@@ -97,11 +100,24 @@ export function Tables() {
         </div>
       </div>
 
-      {/* Métricas de la página */}
+      {/* Dashboard de la base seleccionada */}
       <div className="grid grid-cols-3 gap-3">
-        <KpiCard label="Tablas (página)" value={String(rows.length)} loading={q.isLoading} />
-        <KpiCard label="Espacio (página)" value={gb(pageGb)} loading={q.isLoading} />
-        <KpiCard label="Skew máx (página)" value={maxSkew.toFixed(2)} loading={q.isLoading} />
+        <KpiCard
+          label={db === '*' ? 'Tablas (todas)' : `Tablas · ${db}`}
+          value={int(summary.data?.table_count)}
+          loading={summary.isLoading}
+        />
+        <KpiCard label="Espacio total" value={gb(summary.data?.total_gb)} loading={summary.isLoading} />
+        <div className="panel px-4 py-3">
+          <div className="th">Mal distribuidas</div>
+          <div
+            className="mt-1 font-data text-kpi"
+            style={{ color: (summary.data?.skewed ?? 0) > 0 ? 'var(--warn)' : 'var(--ok)' }}
+          >
+            {summary.isLoading ? '···' : int(summary.data?.skewed)}
+          </div>
+          <div className="mt-0.5 font-data text-micro text-ink2">skew &gt; 8</div>
+        </div>
       </div>
 
       {/* Controles */}

@@ -33,6 +33,13 @@ def overview(db: str | None) -> str:
             f"WHERE a.OBJTYPE='TABLE'{_where_db(db)}")
 
 
+def skewed_count(db: str | None, threshold: float = 8.0) -> str:
+    # nº de tablas "mal distribuidas" (skew por encima del umbral). Ver NETEZZA.md.
+    return (f"SELECT COUNT(*) AS n FROM _V_OBJ_RELATION_XDB a "
+            f"JOIN _V_SYS_OBJECT_STORAGE_SIZE s ON s.tblid=a.objid "
+            f"WHERE a.OBJTYPE='TABLE'{_where_db(db)} AND s.skew>{threshold}")
+
+
 def owners(db: str | None) -> str:
     return (f"SELECT a.owner AS owner, COUNT(*) AS tablas, "
             f"ROUND(SUM(s.used_bytes)/1073741824.0,2) AS gb "

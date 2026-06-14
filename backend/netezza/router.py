@@ -23,6 +23,11 @@ def overview(db: str | None = None, fresh: bool = False):
     return service.overview(db, fresh)
 
 
+@router.get("/db_summary")
+def db_summary(db: str | None = None, fresh: bool = False):
+    return service.db_summary(db, fresh)
+
+
 @router.get("/dataslices")
 def dataslices(fresh: bool = False):
     return service.dataslices(fresh)

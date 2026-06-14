@@ -119,6 +119,11 @@ async function get<T>(path: string, params?: Record<string, string | number | bo
 export const api = {
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
   overview: (db: string, fresh = false) => get<OverviewResp>('/overview', { db, fresh }),
+  dbSummary: (db: string, fresh = false) =>
+    get<{ table_count: number; total_gb: number; skewed: number; database: string | null } & Freshness>(
+      '/db_summary',
+      { db, fresh },
+    ),
   dataslices: (fresh = false) =>
     get<{ rows: Dataslice[] } & Freshness>('/dataslices', { fresh }),
   owners: (db: string, fresh = false) =>
