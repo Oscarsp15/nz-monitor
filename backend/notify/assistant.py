@@ -6,18 +6,15 @@ solo atiende el chat configurado.
 """
 import json
 import logging
-import re
 import time
 import urllib.parse
 import urllib.request
 
-from netezza import service
-from store import get_groq, get_setting, get_telegram, latest_snapshot
+from store import get_groq, get_setting, get_telegram
 
-from . import ai
+from . import agent
 
 log = logging.getLogger("collector")
-_DS_RE = re.compile(r"dataslice\s*(\d+)", re.I)
 
 
 def assistant_enabled() -> bool:
@@ -46,44 +43,6 @@ def _send(chat_id: str, text: str, reply_to: int | None = None) -> None:
     _api("sendMessage", p, timeout=15)
 
 
-def _context(question: str, replied: str | None) -> str:
-    """Resumen en vivo para fundamentar la respuesta (snapshots + ds puntual si se menciona)."""
-    parts: list[str] = []
-    al = latest_snapshot("alerts")
-    if al and al.get("data"):
-        d = al["data"]
-        parts.append(
-            f"Alertas: {d.get('count', 0)} activas, sat. máx {d.get('max_dataslice_pct')}%."
-        )
-    sp = latest_snapshot("space_overview")
-    if sp and sp.get("data"):
-        dbs = sorted(sp["data"].get("databases", []), key=lambda x: x.get("gb", 0), reverse=True)
-        top = ", ".join(f"{x['db']} {x['gb']}GB" for x in dbs[:3])
-        parts.append(f"Top bases por espacio: {top}.")
-    # tablas peor distribuidas del clúster (mayor skew) — para "qué tablas redistribuir"
-    try:
-        worst = service.tables(None, "skew", 0).get("rows", [])[:10]
-        if worst:
-            lst = "; ".join(
-                f"{r['db']}.{r['table']} (skew {r['skew']}, {r['space_gb']}GB)" for r in worst
-            )
-            parts.append(f"Tablas con mayor skew (mal distribuidas) en el clúster: {lst}.")
-    except Exception as e:  # noqa: BLE001
-        log.warning("[assistant] ctx skew %s", e)
-    # si el mensaje o la alerta citan un dataslice, traer sus tablas peor distribuidas
-    m = _DS_RE.search(replied or "") or _DS_RE.search(question or "")
-    if m:
-        ds = int(m.group(1))
-        try:
-            rows = service.tables_on_dataslice(ds, order="skew").get("rows", [])[:6]
-            if rows:
-                tops = "; ".join(f"{r['table']} (skew {r['skew']}, {r['gb_ds']}GB)" for r in rows)
-                parts.append(f"Tablas peor distribuidas en dataslice {ds}: {tops}.")
-        except Exception as e:  # noqa: BLE001
-            log.warning("[assistant] ctx ds %s", e)
-    return " ".join(parts) or "Sin datos recientes del recolector."
-
-
 def handle_update(update: dict, my_chat: str) -> None:
     msg = update.get("message") or {}
     chat_id = str((msg.get("chat") or {}).get("id", ""))
@@ -91,15 +50,8 @@ def handle_update(update: dict, my_chat: str) -> None:
     if not text or chat_id != str(my_chat):  # seguridad: solo el chat configurado
         return
     replied = ((msg.get("reply_to_message") or {}).get("text")) or None
-    prompt = (
-        "Eres el asistente de nz-monitor (observabilidad de Netezza). Responde breve y claro, en "
-        "español, tono técnico, SIN markdown. Básate SOLO en estos datos en vivo (no inventes "
-        "tablas ni números; si piden tablas para redistribuir, usa la lista de mayor skew):\n"
-        f"{_context(text, replied)}\n"
-        + (f'El usuario responde a esta alerta: "{replied}".\n' if replied else "")
-        + f"Pregunta: {text}"
-    )
-    answer = ai.ask(prompt, max_tokens=400) or "No pude consultar la IA ahora mismo."
+    # agente con tool-calling: la IA consulta Netezza on-demand
+    answer = agent.run_agent(text, replied) or "No pude consultar la IA ahora mismo."
     _send(chat_id, answer, reply_to=msg.get("message_id"))
 
 
