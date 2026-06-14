@@ -10,13 +10,43 @@ export function Settings() {
   const qc = useQueryClient()
   const cfg = useQuery({ queryKey: ['settings', 'telegram'], queryFn: api.getTelegram })
 
+  const ai = useQuery({ queryKey: ['settings', 'ai'], queryFn: api.getAi })
+
   const [chatId, setChatId] = useState('')
   const [token, setToken] = useState('')
   const [testMsg, setTestMsg] = useState<string | null>(null)
 
+  const [aiKey, setAiKey] = useState('')
+  const [aiModel, setAiModel] = useState('')
+  const [aiEnabled, setAiEnabled] = useState(false)
+  const [aiMsg, setAiMsg] = useState<string | null>(null)
+
   useEffect(() => {
     if (cfg.data) setChatId(cfg.data.chat_id)
   }, [cfg.data])
+
+  useEffect(() => {
+    if (ai.data) {
+      setAiModel(ai.data.model)
+      setAiEnabled(ai.data.enabled)
+    }
+  }, [ai.data])
+
+  const saveAi = useMutation({
+    mutationFn: () =>
+      api.saveAi({ api_key: aiKey || undefined, model: aiModel, enabled: aiEnabled }),
+    onSuccess: () => {
+      setAiKey('')
+      qc.invalidateQueries({ queryKey: ['settings', 'ai'] })
+    },
+  })
+  const testAi = useMutation({
+    mutationFn: api.testAi,
+    onMutate: () => setAiMsg(null),
+    onSuccess: (r) =>
+      setAiMsg(r.ok ? `✅ IA OK: "${r.sample ?? ''}"` : '❌ La IA no respondió (revisa la API key).'),
+    onError: (e) => setAiMsg(`❌ ${(e as Error).message}`),
+  })
 
   const save = useMutation({
     mutationFn: () => api.saveTelegram({ chat_id: chatId, bot_token: token || undefined }),
@@ -107,6 +137,68 @@ export function Settings() {
               <span className="font-data text-micro text-ok">Guardado.</span>
             )}
             {testMsg && <span className="font-data text-micro text-ink1">{testMsg}</span>}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+          <h2 className="th">Alertas inteligentes (IA · Groq)</h2>
+          <StatusPill status={ai.data?.enabled && ai.data?.has_key ? 'ok' : 'empty'} />
+        </div>
+        <div className="space-y-4 p-4">
+          <p className="text-body text-ink1">
+            <b>Opcional.</b> Añade al aviso una recomendación IA: qué tablas saturan el dataslice y
+            qué hacer (redistribuir / GROOM / DROP). Requiere una API key de Groq.
+          </p>
+
+          <label className="flex cursor-pointer items-center gap-2 text-body text-ink0">
+            <input
+              type="checkbox"
+              checked={aiEnabled}
+              onChange={(e) => setAiEnabled(e.target.checked)}
+              className="accent-[var(--live)]"
+            />
+            Activar análisis IA en las alertas
+          </label>
+
+          <label className="block">
+            <span className="th">Groq API key</span>
+            <input
+              type="password"
+              value={aiKey}
+              onChange={(e) => setAiKey(e.target.value)}
+              placeholder={ai.data?.has_key ? '•••••••• (guardada — escribe para cambiarla)' : 'gsk_…'}
+              className="mt-1 w-full rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+            />
+          </label>
+
+          <label className="block">
+            <span className="th">Modelo</span>
+            <input
+              value={aiModel}
+              onChange={(e) => setAiModel(e.target.value)}
+              placeholder="llama-3.3-70b-versatile"
+              className="mt-1 w-full rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+            />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => saveAi.mutate()}
+              disabled={saveAi.isPending}
+              className="rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+            >
+              {saveAi.isPending ? 'Guardando…' : 'Guardar'}
+            </button>
+            <button
+              onClick={() => testAi.mutate()}
+              disabled={testAi.isPending || !ai.data?.has_key}
+              className="inline-flex items-center gap-1.5 rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+            >
+              Probar IA
+            </button>
+            {aiMsg && <span className="font-data text-micro text-ink1">{aiMsg}</span>}
           </div>
         </div>
       </section>

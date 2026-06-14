@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # chat_id puede ser un usuario, un GRUPO (id negativo, p.ej. -1001234567890) o un canal.
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    groq_api_key: str = ""  # IA opcional (alertas inteligentes); se configura desde la web
 
     # caché de endpoints pasivos / "en vivo" (cache-aside; lo salta ?fresh=true)
     overview_ttl: int = 30
