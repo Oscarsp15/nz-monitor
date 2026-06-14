@@ -74,6 +74,7 @@ export function TableDetail() {
             <KpiCard label="Dataslices ocupados" value={String(occupied)} sub="de 192 (≠ skew)" />
           </div>
 
+          <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
           <section className="panel overflow-hidden">
             <div className="border-b border-line px-4 py-2.5">
               <h2 className="th">
@@ -134,6 +135,7 @@ export function TableDetail() {
               </tbody>
             </table>
           </section>
+          </div>
         </div>
       )}
     </div>

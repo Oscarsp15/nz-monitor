@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from aichat.router import router as aichat_router
 from config import get_settings
 from monitoring.router import router as monitoring_router
 from netezza.router import router as netezza_router
@@ -35,6 +36,7 @@ app.add_middleware(
 app.include_router(netezza_router)
 app.include_router(monitoring_router)
 app.include_router(settings_router)
+app.include_router(aichat_router)
 
 
 @app.get("/health")

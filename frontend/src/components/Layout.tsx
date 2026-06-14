@@ -5,6 +5,7 @@ import {
   Database,
   FolderTree,
   LayoutDashboard,
+  MessageSquare,
   Settings as SettingsIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -52,6 +53,7 @@ const DOMAINS: Domain[] = [
     ],
   },
   { key: 'alertas', label: 'Alertas', icon: Bell, to: '/alertas', prefixes: ['/alertas'], subtabs: [] },
+  { key: 'asistente', label: 'Asistente', icon: MessageSquare, to: '/asistente', prefixes: ['/asistente'], subtabs: [] },
   { key: 'ajustes', label: 'Ajustes', icon: SettingsIcon, to: '/ajustes', prefixes: ['/ajustes'], subtabs: [] },
 ]
 
@@ -142,13 +144,13 @@ export function Layout() {
           </div>
         )}
 
-        <main className="mx-auto max-w-[1200px] px-4 py-5 pb-24 md:pb-8">
+        <main className="mx-auto max-w-[1600px] px-4 py-5 pb-24 md:px-8 md:pb-8">
           <Outlet />
         </main>
       </div>
 
       {/* Bottom nav (móvil) — nivel 1 */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-bg0/95 backdrop-blur md:hidden"
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-line bg-bg0/95 backdrop-blur md:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {DOMAINS.map((d) => {
           const active = d.key === dom.key
