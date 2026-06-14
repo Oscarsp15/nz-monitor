@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
@@ -7,6 +8,7 @@ import { api } from '../lib/api'
 import { gb, int } from '../lib/format'
 
 export function Overview() {
+  const navigate = useNavigate()
   const space = useQuery({ queryKey: ['mon', 'space'], queryFn: api.monitoringSpace })
   const health = useQuery({ queryKey: ['mon', 'health'], queryFn: api.monitoringHealth })
   const ds = useQuery({ queryKey: ['dataslices'], queryFn: () => api.dataslices() })
@@ -66,7 +68,11 @@ export function Overview() {
             </thead>
             <tbody>
               {dbs.map((d) => (
-                <tr key={d.db} className="border-b border-line last:border-0 hover:bg-bg2">
+                <tr
+                  key={d.db}
+                  onClick={() => navigate(`/tablas?db=${encodeURIComponent(d.db)}`)}
+                  className="cursor-pointer border-b border-line last:border-0 hover:bg-bg2"
+                >
                   <td className="px-4 py-1.5 font-data text-body text-ink0">{d.db}</td>
                   <td className="num px-4 py-1.5 text-body text-ink1">{int(d.table_count)}</td>
                   <td className="num px-4 py-1.5 text-body text-ink0">{gb(d.gb)}</td>

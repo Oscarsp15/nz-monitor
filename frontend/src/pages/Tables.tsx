@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { RefreshButton } from '../components/RefreshButton'
@@ -17,25 +17,29 @@ const COLS: { key: string; label: string; order?: string; num?: boolean }[] = [
   { key: 'distribute_on', label: 'Distribución' },
   { key: 'space_gb', label: 'Espacio', order: 'space', num: true },
   { key: 'skew', label: 'Skew', order: 'skew', num: true },
-  { key: 'gb_ds', label: 'En dataslice', order: 'ds', num: true },
 ]
 
 export function Tables() {
   const navigate = useNavigate()
+  const [sp, setSp] = useSearchParams()
   const dbsQ = useQuery({ queryKey: ['databases'], queryFn: api.databases })
 
-  const [db, setDb] = useState('*')
-  const [ds, setDs] = useState(1)
+  const db = sp.get('db') || '*'
   const [order, setOrder] = useState('space')
   const [page, setPage] = useState(0)
   const freshRef = useRef(false)
 
+  const setDb = (value: string) => {
+    setSp(value === '*' ? {} : { db: value })
+    setPage(0)
+  }
+
   const q = useQuery({
-    queryKey: ['tables', db, ds, order, page],
+    queryKey: ['tables', db, order, page],
     queryFn: async () => {
       const fresh = freshRef.current
       freshRef.current = false
-      return api.tables({ db, ds, order, page, fresh })
+      return api.tables({ db, order, page, fresh })
     },
   })
 
@@ -58,7 +62,9 @@ export function Tables() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-dense text-lg font-semibold text-ink0">Tablas y distribución</h1>
-          <p className="text-body text-ink1">Investigación en vivo — skew, espacio y dataslices.</p>
+          <p className="text-body text-ink1">
+            Investigación en vivo — skew = concentración en su dataslice más cargado.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <FreshnessSeal ageSeconds={ageFromAt(q.data?.at)} live={live} />
@@ -72,10 +78,7 @@ export function Tables() {
           Base
           <select
             value={db}
-            onChange={(e) => {
-              setDb(e.target.value)
-              setPage(0)
-            }}
+            onChange={(e) => setDb(e.target.value)}
             className="rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
           >
             <option value="*">Todas</option>
@@ -85,16 +88,6 @@ export function Tables() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1">
-          Dataslice
-          <input
-            type="number"
-            min={1}
-            value={ds}
-            onChange={(e) => setDs(Math.max(1, Number(e.target.value) || 1))}
-            className="w-20 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
-          />
         </label>
         <label className="ml-auto flex cursor-pointer items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1">
           <input
@@ -109,7 +102,7 @@ export function Tables() {
 
       {/* Tabla */}
       <section className="panel overflow-x-auto">
-        <table className="w-full min-w-[760px]">
+        <table className="w-full min-w-[680px]">
           <thead>
             <tr className="border-b border-line-strong">
               {COLS.map((c) => (
@@ -154,7 +147,6 @@ export function Tables() {
                   <td className="px-3 py-1.5">
                     <SkewBadge skew={r.skew} />
                   </td>
-                  <td className="num px-3 py-1.5 text-body text-ink1">{gb(r.gb_ds)}</td>
                 </tr>
               ))}
             {!q.isError && !q.isLoading && rows.length === 0 && (
