@@ -1,8 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
+import { BlockedHint } from '../components/BlockedHint'
 import { ExportButton, SearchInput } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
@@ -14,6 +15,7 @@ import { exportToExcel, stamp } from '../lib/exportXlsx'
 import { ageFromAt, gb, int } from '../lib/format'
 import { useDebounced } from '../hooks/useDebounced'
 import { useLiveMode } from '../hooks/useLiveMode'
+import { useTableDetailLink } from '../hooks/useTableDetailLink'
 
 // `priority` = orden de preferencia en 640–1023px (DESIGN §9.3): TABLA > ESPACIO > SKEW > BASE >
 // ESQUEMA > OWNER > DISTRIBUCIÓN. Las de priority > 4 se ocultan en tablet, no se encoge la letra.
@@ -32,7 +34,7 @@ const SORT_OPTIONS = [
 ]
 
 export function Tables() {
-  const navigate = useNavigate()
+  const { open: openDetail, allowed: detailAllowed, blocked: detailBlocked, dismissBlocked } = useTableDetailLink()
   const [sp, setSp] = useSearchParams()
   const dbsQ = useQuery({ queryKey: ['databases'], queryFn: api.databases })
 
@@ -212,6 +214,8 @@ export function Tables() {
         </label>
       </div>
 
+      <BlockedHint show={detailBlocked} onDone={dismissBlocked} />
+
       {/* Fichas (<640px, DESIGN §9.3): nunca scroll horizontal de 7 columnas con una mano. */}
       <div className="space-y-2 sm:hidden">
         {q.isError && (
@@ -228,11 +232,13 @@ export function Tables() {
               key={r.objid}
               role="button"
               tabIndex={0}
-              onClick={() => navigate(`/tabla/${r.objid}?name=${encodeURIComponent(r.table ?? '')}`)}
+              onClick={() => openDetail(r.objid, r.table)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') navigate(`/tabla/${r.objid}?name=${encodeURIComponent(r.table ?? '')}`)
+                if (e.key === 'Enter') openDetail(r.objid, r.table)
               }}
-              className="tap44-row panel cursor-pointer px-4 py-3 active:bg-bg2"
+              title={detailAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+              aria-disabled={!detailAllowed}
+              className={`tap44-row panel px-4 py-3 ${detailAllowed ? 'cursor-pointer active:bg-bg2' : 'cursor-not-allowed opacity-70'}`}
             >
               <div className="break-all font-data text-body text-ink0">{r.table}</div>
               <div className="mt-0.5 truncate font-dense text-label text-ink2">
@@ -287,10 +293,10 @@ export function Tables() {
               rows.map((r) => (
                 <tr
                   key={r.objid}
-                  onClick={() =>
-                    navigate(`/tabla/${r.objid}?name=${encodeURIComponent(r.table ?? '')}`)
-                  }
-                  className="tap44-row cursor-pointer border-b border-line last:border-0 hover:bg-bg2"
+                  onClick={() => openDetail(r.objid, r.table)}
+                  title={detailAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+                  aria-disabled={!detailAllowed}
+                  className={`tap44-row border-b border-line last:border-0 ${detailAllowed ? 'cursor-pointer hover:bg-bg2' : 'cursor-not-allowed opacity-70'}`}
                 >
                   <td className="px-3 py-1.5 font-data text-body text-ink0">{r.table}</td>
                   <td className="px-3 py-1.5 font-data text-body text-ink1">{r.db}</td>

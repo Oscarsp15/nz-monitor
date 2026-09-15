@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Lock } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { KpiCard } from '../components/KpiCard'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { dt, fixed, gb } from '../lib/format'
 
 export function TableDetail() {
@@ -11,21 +12,30 @@ export function TableDetail() {
   const id = Number(objid)
   const [sp] = useSearchParams()
   const name = sp.get('name') ?? ''
+  const { isOperador } = useAuth()
 
+  // El detalle de tabla es en vivo (/api/table, /api/table/slices — la de historial es la
+  // consulta más cara de toda la app) y el backend la exige operador+. Para `viewer` ni se
+  // dispara: si llega por URL directa (p. ej. un enlace guardado), se le explica por qué en vez
+  // de dejarle ver un 403 crudo o una pantalla vacía.
   const detail = useQuery({
     queryKey: ['table', id],
     queryFn: () => api.tableDetail(id, name),
-    enabled: Number.isFinite(id),
+    enabled: Number.isFinite(id) && isOperador,
   })
   const slices = useQuery({
     queryKey: ['slices', id],
     queryFn: () => api.tableSlices(id),
-    enabled: Number.isFinite(id),
+    enabled: Number.isFinite(id) && isOperador,
   })
 
   // Carga ATÓMICA (AGENTS §12): no pintar nada hasta que ambas consultas terminen.
-  const loading = detail.isLoading || slices.isLoading
-  const error = detail.isError || slices.isError
+  const loading = isOperador && (detail.isLoading || slices.isLoading)
+  const forbidden =
+    !isOperador ||
+    (detail.error as Error | undefined)?.message === 'No tienes permisos para esta acción' ||
+    (slices.error as Error | undefined)?.message === 'No tienes permisos para esta acción'
+  const error = (detail.isError || slices.isError) && !forbidden
   const meta = detail.data?.meta
   const sliceRows = slices.data?.slices ?? []
   const occupied = slices.data?.occupied ?? sliceRows.length
@@ -59,6 +69,21 @@ export function TableDetail() {
           </div>
           <div className="panel h-32 animate-pulse opacity-40" />
           <div className="panel h-40 animate-pulse opacity-40" />
+        </div>
+      ) : forbidden ? (
+        <div className="panel flex flex-col items-center gap-3 px-4 py-10 text-center">
+          <Lock size={20} strokeWidth={1.5} className="text-ink2" />
+          <p className="text-body text-ink0">Tu rol no permite consultas en vivo.</p>
+          <p className="max-w-sm font-data text-micro text-ink2">
+            Ver el detalle de una tabla consulta el appliance al instante. Pide a un operador o
+            administrador que lo revise, o vuelve a la lista de tablas.
+          </p>
+          <Link
+            to="/tablas"
+            className="tap44 mt-1 inline-flex items-center gap-1 rounded border border-line px-3 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0"
+          >
+            <ArrowLeft size={14} /> Volver a tablas
+          </Link>
         </div>
       ) : error ? (
         <div className="panel px-4 py-8 text-center text-body text-crit">

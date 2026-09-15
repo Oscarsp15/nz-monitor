@@ -152,8 +152,8 @@ def deny_live_for_viewer(request: Request, user: AuthUser) -> CurrentUser:
     """Bloquea a `viewer` cualquier parámetro que fuerce consulta en vivo (`fresh`/`live`).
 
     Se aplica al router completo de datos, no endpoint por endpoint: así un endpoint nuevo con
-    `?fresh=` queda cubierto sin acordarse de nada. Ojo: **solo cubre endpoints con `fresh`/`live`**;
-    uno que consulte Netezza SIEMPRE (p. ej. `/api/table`) necesita además su `require_role`.
+    `?fresh=` queda cubierto sin acordarse de nada. Ojo: **solo cubre endpoints con `fresh`/`live`**
+    en el query string; uno que consulte Netezza SIEMPRE (`/api/table`) necesita su `require_role`.
     """
     if role_at_least(user.role, "operador"):
         return user
