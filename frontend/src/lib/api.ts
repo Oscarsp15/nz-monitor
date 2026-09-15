@@ -166,19 +166,6 @@ async function mutate<T>(method: string, path: string, body?: unknown): Promise<
   return res.json() as Promise<T>
 }
 
-export interface TelegramCfg {
-  configured: boolean
-  chat_id: string
-  has_token: boolean
-}
-
-export interface AiCfg {
-  enabled: boolean
-  model: string
-  has_key: boolean
-  assistant: boolean
-}
-
 export interface SftpCfg {
   host: string
   port: number
@@ -197,16 +184,6 @@ export const api = {
   saveAuth: (b: { username?: string; password?: string; disable?: boolean }) =>
     mutate<{ configured: boolean; user: string }>('PUT', '/settings/auth', b),
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
-  getTelegram: () => get<TelegramCfg>('/settings/telegram'),
-  saveTelegram: (b: { bot_token?: string; chat_id?: string }) =>
-    mutate<TelegramCfg>('PUT', '/settings/telegram', b),
-  testTelegram: () => mutate<{ ok: boolean }>('POST', '/settings/telegram/test'),
-  getAi: () => get<AiCfg>('/settings/ai'),
-  saveAi: (b: { api_key?: string; model?: string; enabled?: boolean; assistant?: boolean }) =>
-    mutate<AiCfg>('PUT', '/settings/ai', b),
-  testAi: () => mutate<{ ok: boolean; sample: string | null }>('POST', '/settings/ai/test'),
-  aiChat: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
-    mutate<{ answer: string | null; error?: string }>('POST', '/ai/chat', { messages }),
   // ─── SFTP ───
   sftpDisk: (path: string) =>
     get<{ path: string; filesystem?: string; size?: string; used?: string; available?: string;

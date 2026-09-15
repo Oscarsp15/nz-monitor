@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_env: str = "development"
-    # clave maestra para cifrar settings sensibles en la BD (token Telegram, etc.).
+    # clave maestra para cifrar settings sensibles en la BD (credenciales SFTP, etc.).
     # En prod, ponla larga y aleatoria en .env. Es el unico secreto de bootstrap.
     secret_key: str = "nz-monitor-dev-secret-change-me"  # noqa: S105 (default de dev; override en .env)
     # api = solo sirve la API (NO arranca el recolector) · collector = proceso único del recolector
@@ -38,12 +38,6 @@ class Settings(BaseSettings):
     cache_backend: str = "memory"
     eventbus_backend: str = "memory"
     redis_url: str = "redis://localhost:6379/0"
-
-    # Notificaciones Telegram (push de alertas). Vacío = desactivado (no rompe).
-    # chat_id puede ser un usuario, un GRUPO (id negativo, p.ej. -1001234567890) o un canal.
-    telegram_bot_token: str = ""
-    telegram_chat_id: str = ""
-    groq_api_key: str = ""  # IA opcional (alertas inteligentes); se configura desde la web
 
     # SFTP (timeouts; credenciales se configuran cifradas desde la web)
     sftp_connection_timeout: int = 15

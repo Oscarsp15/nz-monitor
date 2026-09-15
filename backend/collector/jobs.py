@@ -4,11 +4,9 @@ Sin dependencia de APScheduler (eso vive en __main__) → estos jobs son unitari
 Cada job es tolerante a fallos: si Netezza no responde, guarda el snapshot como `error`, no rompe
 el scheduler (ver ARCHITECTURE.md §2.1).
 """
-import contextlib
 from collections.abc import Callable
 from typing import Any
 
-import notify
 from cache import get_event_bus
 from config import get_settings
 from netezza import queries as q
@@ -25,7 +23,7 @@ ALERTS = "alerts"
 # (banda de alarma 95–97%): el piso del clúster ronda el 85%, así que avisar a 85% era ruido.
 DS_WARN = 90.0
 DS_CRIT = 95.0
-# umbrales de disco SFTP (%): push (Telegram) al superar 90%
+# umbrales de disco SFTP (%): nivel de alerta al superar 90%
 SFTP_WARN = 85.0
 SFTP_CRIT = 90.0
 
@@ -116,10 +114,6 @@ def run_job(metric_type: str, fn: Callable[[], Any], *, credential_id: int | Non
         "snapshots",
         {"metric_type": metric_type, "status": status, "collected_at": collected_at},
     )
-    if status == "ok" and metric_type == ALERTS:
-        # una notificación nunca rompe el recolector (notify ya es tolerante a fallos)
-        with contextlib.suppress(Exception):
-            notify.notify_alerts(payload)
     return {
         "metric_type": metric_type, "status": status, "collected_at": collected_at, "error": error,
     }

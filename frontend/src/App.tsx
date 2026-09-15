@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 
 import { Layout } from './components/Layout'
 import { Alerts } from './pages/Alerts'
-import { Chat } from './pages/Chat'
 import { CodeSearch } from './pages/CodeSearch'
 import { DataslicePage } from './pages/DataslicePage'
 import { Dataslices } from './pages/Dataslices'
@@ -29,7 +28,6 @@ const router = createBrowserRouter([
       { path: 'sftp/disco', element: <SftpDisk /> },
       { path: 'sftp/archivos', element: <SftpOldFiles /> },
       { path: 'alertas', element: <Alerts /> },
-      { path: 'asistente', element: <Chat /> },
       { path: 'tabla/:objid', element: <TableDetail /> },
       { path: 'ajustes', element: <Settings /> },
     ],

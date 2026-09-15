@@ -11,7 +11,6 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from aichat.router import router as aichat_router
 from auth import require_auth
 from auth.router import router as auth_router
 from config import get_settings
@@ -45,7 +44,6 @@ _protected = [Depends(require_auth)]
 app.include_router(netezza_router, dependencies=_protected)
 app.include_router(monitoring_router, dependencies=_protected)
 app.include_router(settings_router, dependencies=_protected)
-app.include_router(aichat_router, dependencies=_protected)
 app.include_router(sftp_router, dependencies=_protected)
 
 

@@ -3,13 +3,14 @@
 No reescribir todo de golpe. Migrar el `nz-monitor` actual por fases, midiendo el alivio de carga
 en Netezza en cada paso. Cada fase es desplegable por sí sola.
 
-> **Estado (v2.15):** Fase 1 ✅ · Fase 2 ✅ · Fase 3 ✅ (`?fresh=true` + modo en vivo) ·
+> **Estado (v2.16):** Fase 1 ✅ · Fase 2 ✅ · Fase 3 ✅ (`?fresh=true` + modo en vivo) ·
 > Frontend React/PWA ✅ (nav por niveles: bottom nav móvil + sidebar desktop) · Vistas: Resumen
 > (dashboard con tendencias + disco SFTP), Tablas/Owners/Dataslices con drill-down ds→tablas→detalle,
-> Alertas, Asistente (chat IA), Ajustes · Alertas (dataslice + disco SFTP) por snapshot + **Telegram
-> push** con **IA (Groq)** y **asistente conversacional** (tool-calling) · **SFTP** (disco + archivos
+> Alertas, Ajustes · Alertas (dataslice + disco SFTP) por snapshot · **SFTP** (disco + archivos
 > viejos) · Config 100% por la web (cifrada) · **Fase 4 SSE ✅** (dashboard en vivo) · **Auth ✅**
-(login opcional JWT) · **Búsqueda de código en SPs ✅** · IA con **SQL accionable ✅** (GROOM/CTAS).
+(login opcional JWT) · **Búsqueda de código en SPs ✅**.
+> **Eliminado:** integración de IA (Groq) y notificaciones/asistente por Telegram — quitadas del
+> backend (decisión de producto), ya no forman parte del alcance.
 **Pendiente:** lineage / grafo de dependencias de SPs · Fase 5 Redis (solo al escalar).
 
 ## Fase 0 — Medir (antes de tocar nada)
