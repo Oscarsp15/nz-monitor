@@ -59,6 +59,13 @@ def get_setting(key: str, db_path: Path | None = None) -> str | None:
     return row["value"]
 
 
+def delete_setting(key: str, db_path: Path | None = None) -> None:
+    """Borra una clave del KV (p.ej. al migrar el login antiguo de un solo usuario)."""
+    with _connect(db_path) as conn:
+        _ensure(conn)
+        conn.execute("DELETE FROM app_setting WHERE key=?", (key,))
+
+
 # ─── SFTP (credenciales cifradas, config web) ───
 def get_sftp(db_path: Path | None = None) -> dict:
     return {

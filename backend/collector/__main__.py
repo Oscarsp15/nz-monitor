@@ -7,6 +7,7 @@ import logging
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
+from auth.bootstrap import bootstrap_users  # sin pasar por auth/__init__ (no arrastra FastAPI)
 from config import get_settings
 from store import init_db
 
@@ -22,6 +23,7 @@ def main() -> None:
         log.warning("APP_ROLE=%r (esperado 'collector'); arranco el recolector igual.", s.app_role)
 
     init_db()
+    bootstrap_users()  # comparte el SQLite con la API: migra el login antiguo / siembra el admin
 
     plan = [
         (jobs.HEALTH, jobs.collect_health, s.collector_health_interval_seconds),

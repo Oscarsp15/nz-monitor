@@ -4,13 +4,17 @@ import {
   Bell,
   Database,
   FolderTree,
+  KeyRound,
   LayoutDashboard,
+  LogOut,
   Settings as SettingsIcon,
+  Users as UsersIcon,
   type LucideIcon,
 } from 'lucide-react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { useLiveUpdates } from '../hooks/useLiveUpdates'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -25,6 +29,7 @@ interface Domain {
   to: string // ruta por defecto del dominio
   prefixes: string[] // rutas que pertenecen a este dominio
   subtabs: SubTab[]
+  adminOnly?: boolean
 }
 
 const DOMAINS: Domain[] = [
@@ -54,12 +59,31 @@ const DOMAINS: Domain[] = [
     ],
   },
   { key: 'alertas', label: 'Alertas', icon: Bell, to: '/alertas', prefixes: ['/alertas'], subtabs: [] },
-  { key: 'ajustes', label: 'Ajustes', icon: SettingsIcon, to: '/ajustes', prefixes: ['/ajustes'], subtabs: [] },
+  {
+    key: 'usuarios',
+    label: 'Usuarios',
+    icon: UsersIcon,
+    to: '/usuarios',
+    prefixes: ['/usuarios'],
+    subtabs: [],
+    adminOnly: true,
+  },
+  {
+    key: 'ajustes',
+    label: 'Ajustes',
+    icon: SettingsIcon,
+    to: '/ajustes',
+    prefixes: ['/ajustes'],
+    subtabs: [],
+    adminOnly: true,
+  },
 ]
 
-function activeDomain(path: string): Domain {
-  if (path === '/') return DOMAINS[0]
-  return DOMAINS.find((d) => d.prefixes.some((p) => path.startsWith(p))) ?? DOMAINS[0]
+const ROLE_LABEL: Record<string, string> = { admin: 'Administrador', operador: 'Operador', viewer: 'Visor' }
+
+function activeDomain(path: string, domains: Domain[]): Domain {
+  if (path === '/') return domains[0]
+  return domains.find((d) => d.prefixes.some((p) => path.startsWith(p))) ?? domains[0]
 }
 
 function useAlertCount(): { count: number; crit: boolean } {
@@ -82,7 +106,9 @@ function Badge({ count, crit }: { count: number; crit: boolean }) {
 
 export function Layout() {
   const { pathname } = useLocation()
-  const dom = activeDomain(pathname)
+  const { user, role, isAdmin, logout } = useAuth()
+  const domains = DOMAINS.filter((d) => !d.adminOnly || isAdmin)
+  const dom = activeDomain(pathname, domains)
   const alert = useAlertCount()
   useLiveUpdates() // SSE: refresca las vistas cuando el recolector publica datos nuevos
 
@@ -95,7 +121,7 @@ export function Layout() {
           <span className="font-dense text-body font-semibold tracking-wide text-ink0">nz-monitor</span>
         </div>
         <nav className="flex flex-col gap-0.5 p-2">
-          {DOMAINS.map((d) => (
+          {domains.map((d) => (
             <NavLink
               key={d.key}
               to={d.to}
@@ -114,6 +140,33 @@ export function Layout() {
             <ThemeToggle />
           </div>
         </nav>
+
+        {/* Usuario + rol + salir (AGENTS §12: siempre visible, no depende de "Ajustes") */}
+        <div className="mt-auto border-t border-line p-3">
+          <div className="min-w-0">
+            <div className="truncate font-data text-body text-ink0">{user ?? '—'}</div>
+            <div className="font-dense text-micro uppercase tracking-wide text-ink2">
+              {role ? ROLE_LABEL[role] ?? role : ''}
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <Link
+              to="/ajustes"
+              title="Cambiar contraseña"
+              className="rounded border border-line p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0"
+            >
+              <KeyRound size={14} strokeWidth={1.5} />
+            </Link>
+            <button
+              onClick={logout}
+              title="Salir"
+              className="ml-auto flex items-center gap-1.5 rounded border border-line px-2.5 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0"
+            >
+              <LogOut size={14} strokeWidth={1.5} />
+              Salir
+            </button>
+          </div>
+        </div>
       </aside>
 
       <div className="min-w-0 flex-1">
@@ -121,8 +174,18 @@ export function Layout() {
         <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b border-line bg-bg0/95 px-4 backdrop-blur md:hidden">
           <Activity size={16} strokeWidth={2} className="text-live" />
           <span className="font-dense text-body font-semibold tracking-wide text-ink0">nz-monitor</span>
-          <span className="ml-auto">
+          <span className="ml-auto flex items-center gap-1">
+            <Link
+              to="/ajustes"
+              title="Cambiar contraseña"
+              className="rounded p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0"
+            >
+              <KeyRound size={16} strokeWidth={1.5} />
+            </Link>
             <ThemeToggle />
+            <button onClick={logout} title="Salir" className="rounded p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0">
+              <LogOut size={16} strokeWidth={1.5} />
+            </button>
           </span>
         </header>
 
@@ -150,10 +213,15 @@ export function Layout() {
         </main>
       </div>
 
-      {/* Bottom nav (móvil) — nivel 1 */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-bg0/95 backdrop-blur md:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {DOMAINS.map((d) => {
+      {/* Bottom nav (móvil) — nivel 1. El número de ítems cambia según el rol (§12): rejilla dinámica. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-20 grid border-t border-line bg-bg0/95 backdrop-blur md:hidden"
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          gridTemplateColumns: `repeat(${domains.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {domains.map((d) => {
           const active = d.key === dom.key
           return (
             <NavLink

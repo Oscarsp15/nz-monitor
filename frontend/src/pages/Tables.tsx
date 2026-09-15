@@ -55,7 +55,7 @@ export function Tables() {
     freshRef.current = true
     q.refetch()
   }
-  const { live, setLive } = useLiveMode(refreshNow)
+  const { live, setLive, allowed: liveAllowed } = useLiveMode(refreshNow)
 
   const setOrderCol = (col?: string) => {
     if (!col) return
@@ -155,10 +155,16 @@ export function Tables() {
           placeholder="Tabla u owner…"
         />
         <ExportButton onClick={doExport} disabled={rows.length === 0} />
-        <label className="ml-auto flex cursor-pointer items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1">
+        <label
+          className={`ml-auto flex items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1 ${
+            liveAllowed ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+          }`}
+          title={liveAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+        >
           <input
             type="checkbox"
             checked={live}
+            disabled={!liveAllowed}
             onChange={(e) => setLive(e.target.checked)}
             className="accent-[var(--live)]"
           />

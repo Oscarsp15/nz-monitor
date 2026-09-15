@@ -1,7 +1,8 @@
 """Endpoints de observabilidad de Netezza (router fino; la lógica vive en service.py).
 
 `fresh=true` = botón "Actualizar ahora": salta la caché y consulta Netezza en vivo (AGENTS §2/§8).
-TODO(prod): proteger con auth (Depends get_current_user) — ver AGENTS.md §9.
+Auth: el router se monta con `deny_live_for_viewer` en `main.py` → exige sesión y, si el rol es
+`viewer`, rechaza `fresh=true`/`live=true` con 403 (AGENTS §9).
 """
 from fastapi import APIRouter
 

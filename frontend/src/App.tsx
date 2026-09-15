@@ -1,6 +1,8 @@
+import { type ReactNode } from 'react'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 
 import { Layout } from './components/Layout'
+import { useAuth } from './lib/auth'
 import { Alerts } from './pages/Alerts'
 import { CodeSearch } from './pages/CodeSearch'
 import { DataslicePage } from './pages/DataslicePage'
@@ -12,6 +14,13 @@ import { SftpDisk } from './pages/SftpDisk'
 import { SftpOldFiles } from './pages/SftpOldFiles'
 import { TableDetail } from './pages/TableDetail'
 import { Tables } from './pages/Tables'
+import { Users } from './pages/Users'
+
+/** La UI no debe depender solo de ocultar el enlace: si un no-admin entra por URL, va al inicio. */
+function AdminOnly({ children }: { children: ReactNode }) {
+  const { isAdmin } = useAuth()
+  return isAdmin ? <>{children}</> : <Navigate to="/" replace />
+}
 
 const router = createBrowserRouter([
   {
@@ -30,6 +39,14 @@ const router = createBrowserRouter([
       { path: 'alertas', element: <Alerts /> },
       { path: 'tabla/:objid', element: <TableDetail /> },
       { path: 'ajustes', element: <Settings /> },
+      {
+        path: 'usuarios',
+        element: (
+          <AdminOnly>
+            <Users />
+          </AdminOnly>
+        ),
+      },
     ],
   },
 ])

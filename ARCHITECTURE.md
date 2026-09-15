@@ -86,3 +86,53 @@ La API sirve el `payload_json` más reciente y devuelve también `collected_at` 
 - SSE (un sentido server→cliente) cubre el 100% del caso pasivo. Más simple que WebSocket.
 - El front se suscribe a `/stream`; al recibir un evento, invalida/actualiza la query de TanStack.
 - WebSocket solo si en el futuro hay interacción bidireccional real.
+
+## 7. Autenticación y roles
+
+Multiusuario con JWT. **El login es obligatorio siempre**: no hay "modo abierto".
+
+```
+POST /api/auth/login ──► verifica pbkdf2 contra app_user ──► JWT {sub, uid, role, exp}
+       │
+       ▼
+cada request:  Authorization: Bearer <jwt>
+       │   require_auth: decodifica el token Y relee app_user (rol, activo)
+       ▼
+require_role(min)          deny_live_for_viewer
+ (viewer<operador<admin)    (viewer + ?fresh/live=true → 403)
+```
+
+- **Módulos**: `auth/security.py` (pbkdf2 + JWT), `auth/deps.py` (dependencias `require_auth`,
+  `require_role`, `deny_live_for_viewer`, `require_auth_stream`), `auth/service.py` (login y
+  cambio de contraseña), `auth/bootstrap.py` (migración + siembra), `auth/router.py` (sesión).
+  `users/` es un dominio aparte: administración de cuentas (solo admin), distinto permiso y
+  distinto ciclo de vida que la sesión.
+- **El rol se relee de la BD en cada request**, no se confía en el del token: desactivar o borrar
+  un usuario invalida sus tokens al instante (401).
+- **Permisos por router** (`main.py`), nunca con `if` repetidos en cada endpoint:
+  `/api/users` y `/api/settings` → admin (excepción: `POST /api/settings/sftp/test`, que abre una
+  conexión real, es de operador); `/api/monitoring` → cualquier autenticado;
+  `netezza`/`sftp` → autenticado, y `viewer` no puede mandar `fresh=true`/`live=true` (403).
+- **SSE**: `EventSource` no manda cabeceras, así que `/api/stream` (y solo ese) acepta
+  `?token=<jwt>` además de la cabecera `Authorization`.
+- **Esquema** (mismo SQLite que snapshots/ajustes; se crea solo):
+
+```sql
+CREATE TABLE IF NOT EXISTS app_user (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('admin','operador','viewer')),
+  active INTEGER NOT NULL DEFAULT 1,
+  must_change_password INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  last_login_at TEXT
+);
+```
+
+- **Arranque** (`bootstrap_users()`, en el `lifespan` de la API y en `python -m collector`):
+  1. si existen las claves KV `auth_user`/`auth_pass_hash` (login viejo de 1 usuario), se crea ese
+     usuario como `admin` **reusando el hash** y se borran las claves;
+  2. si no hay ningún usuario, se siembra `ADMIN_USER`/`ADMIN_PASSWORD` con
+     `must_change_password=1`.
+  Es idempotente y nunca escribe contraseñas en el log.

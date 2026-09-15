@@ -11,7 +11,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from auth import require_auth
+from auth import bootstrap_users, deny_live_for_viewer, deny_password_pending
+from auth.deps import require_auth_stream
 from auth.router import router as auth_router
 from config import get_settings
 from monitoring.router import router as monitoring_router
@@ -19,6 +20,7 @@ from netezza.router import router as netezza_router
 from settings.router import router as settings_router
 from sftp.router import router as sftp_router
 from store import init_db, latest_snapshot
+from users.router import router as users_router
 
 S = get_settings()
 
@@ -26,6 +28,7 @@ S = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()  # asegura la tabla de snapshots (compartida con el recolector)
+    bootstrap_users()  # migra el login antiguo y siembra el admin inicial (auth/bootstrap.py)
     yield
 
 
@@ -38,13 +41,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)  # /api/auth/* — sin protección
-# Routers de datos: protegidos si hay login configurado (require_auth permite si no lo hay)
-_protected = [Depends(require_auth)]
-app.include_router(netezza_router, dependencies=_protected)
-app.include_router(monitoring_router, dependencies=_protected)
-app.include_router(settings_router, dependencies=_protected)
-app.include_router(sftp_router, dependencies=_protected)
+# Matriz de permisos (ver AGENTS §9). El login es SIEMPRE obligatorio.
+app.include_router(auth_router)  # /api/auth/* — login y sesión (cada ruta declara lo suyo)
+app.include_router(users_router, dependencies=[Depends(deny_password_pending)])  # admin
+app.include_router(settings_router, dependencies=[Depends(deny_password_pending)])  # admin,
+# salvo la prueba de conexión (operador+)
+app.include_router(monitoring_router,
+                   dependencies=[Depends(deny_password_pending)])  # pasivo: viewer+
+# Datos en vivo: autenticado y, si el rol es viewer, sin `fresh=true`/`live=true`
+_live_guard = [Depends(deny_live_for_viewer), Depends(deny_password_pending)]
+app.include_router(netezza_router, dependencies=_live_guard)
+app.include_router(sftp_router, dependencies=_live_guard)
 
 
 @app.get("/health")
@@ -55,9 +62,13 @@ def health():
 _STREAM_METRICS = ("health", "space_overview", "alerts")
 
 
-@app.get("/api/stream")
+@app.get("/api/stream", dependencies=[Depends(require_auth_stream), Depends(deny_password_pending)])
 async def stream():
-    """SSE: empuja un evento al cambiar un snapshot (la API vigila SQLite)."""
+    """SSE: empuja un evento al cambiar un snapshot (la API vigila SQLite).
+
+    Requiere sesión. `EventSource` no manda cabeceras, así que este endpoint (y solo este)
+    acepta el token por query string: `/api/stream?token=<jwt>`.
+    """
     async def gen():
         last: dict[str, str | None] = {}
         yield "event: hello\ndata: {}\n\n"

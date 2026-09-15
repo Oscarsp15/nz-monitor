@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     # api = solo sirve la API (NO arranca el recolector) · collector = proceso único del recolector
     app_role: str = "api"
     jwt_expire_minutes: int = 480  # duración del token de login
+    # Admin inicial: solo se usa si la BD no tiene NINGÚN usuario (primer arranque).
+    # Se crea con must_change_password=1 → la web obliga a cambiarla al entrar.
+    admin_user: str = "admin"
+    admin_password: str = "admin"  # noqa: S105 (default de bootstrap; override en .env)
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     # Base local (snapshots, auth, credenciales cifradas). Ver ARCHITECTURE.md §3.

@@ -1,17 +1,25 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Activity } from 'lucide-react'
 import { useState } from 'react'
 
 import { api, setToken } from '../lib/api'
 
+function friendly(err: unknown): string {
+  const msg = (err as Error).message ?? ''
+  if (msg.startsWith('401')) return 'Usuario o contraseña incorrectos.'
+  return msg || 'No se pudo iniciar sesión.'
+}
+
 export function Login() {
+  const qc = useQueryClient()
   const [user, setUser] = useState('')
   const [pass, setPass] = useState('')
   const m = useMutation({
     mutationFn: () => api.login(user, pass),
     onSuccess: (r) => {
       setToken(r.token)
-      location.reload()
+      // refresca el contexto de sesión sin recargar toda la app (feedback instantáneo)
+      qc.invalidateQueries({ queryKey: ['auth'] })
     },
   })
 
@@ -47,9 +55,7 @@ export function Login() {
             className="mt-1 w-full rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
           />
         </label>
-        {m.isError && (
-          <p className="font-data text-micro text-crit">{(m.error as Error).message}</p>
-        )}
+        {m.isError && <p className="font-data text-micro text-crit">{friendly(m.error)}</p>}
         <button
           type="submit"
           disabled={m.isPending || !user || !pass}

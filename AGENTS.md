@@ -157,7 +157,30 @@ Principios derivados:
 ## 9. Seguridad
 
 - Credenciales **cifradas en reposo** (`encrypt_value`/`decrypt_value`). **Nunca** loguear secretos.
-- **Auth en todos los endpoints** (`Depends(get_current_user)`).
+- **Login SIEMPRE obligatorio.** No existe "modo abierto": todo endpoint (salvo `/health` y
+  `/api/auth/status|login`) exige un JWT válido de un usuario **existente y activo** → si no, 401.
+  Las dependencias viven en `backend/auth/deps.py` (`require_auth`, `require_role`,
+  `deny_live_for_viewer`) y se montan **por router** en `main.py`, no con `if` sueltos.
+- **Roles: `viewer` < `operador` < `admin`.** Matriz (implementada, no aspiracional):
+
+| Zona | viewer | operador | admin |
+|---|---|---|---|
+| Lectura (snapshots, tablas, dataslices, owners, búsqueda, SFTP, alertas) | ✅ | ✅ | ✅ |
+| `?fresh=true` / `?live=true` (consulta en vivo a Netezza/SFTP) | ❌ 403 | ✅ | ✅ |
+| Prueba de conexión (`POST /api/settings/sftp/test`) | ❌ 403 | ✅ | ✅ |
+| Ajustes (`GET/PUT /api/settings/*`) | ❌ 403 | ❌ 403 | ✅ |
+| Usuarios (`/api/users/*`) | ❌ 403 | ❌ 403 | ✅ |
+| Sesión propia (`/api/auth/me`, `change-password`) | ✅ | ✅ | ✅ |
+
+- Usuarios en la tabla `app_user` (SQLite local), contraseñas con **pbkdf2** (`auth/security.py`).
+  **Nunca** devolver `password_hash` ni secretos al frontend: proyectar con el modelo Pydantic.
+- Salvaguardas: nadie puede **borrarse/desactivarse a sí mismo** ni dejar el sistema **sin
+  administradores activos** (→ 400 con mensaje en español).
+- **Contraseña pendiente de estrenar** (admin inicial del `.env`, usuario nuevo, reseteo de un
+  administrador): el backend responde **403 a todo** salvo `/api/auth/*` hasta que se cambie
+  (`deny_password_pending`). La pantalla forzada del frontend es comodidad, **no** el control.
+- El SSE `/api/stream` también exige sesión; como `EventSource` no manda cabeceras, **solo ese
+  endpoint** acepta el token por query string (`?token=<jwt>`).
 - Validación de entrada con **Pydantic**; SQL **parametrizado** o lista blanca de identificadores.
 - Netezza en **modo lectura** por defecto.
 
@@ -180,7 +203,7 @@ Principios derivados:
 - [ ] ¿Reutiliza el pool de Netezza? ¿Sin reconexión por catálogo?
 - [ ] ¿Las queries tienen timeout?
 - [ ] ¿Datos de investigación se sirven **en vivo**, no cacheados?
-- [ ] ¿Endpoints con auth y entrada validada?
+- [ ] ¿Endpoints con auth **y el rol correcto** (§9) y entrada validada?
 - [ ] ¿Las vistas con varias consultas cargan **atómicas** (todo junto, atenuado mientras), sin aparición escalonada? (§8/§12)
 
 ---

@@ -8,10 +8,13 @@ en Netezza en cada paso. Cada fase es desplegable por sí sola.
 > (dashboard con tendencias + disco SFTP), Tablas/Owners/Dataslices con drill-down ds→tablas→detalle,
 > Alertas, Ajustes · Alertas (dataslice + disco SFTP) por snapshot · **SFTP** (disco + archivos
 > viejos) · Config 100% por la web (cifrada) · **Fase 4 SSE ✅** (dashboard en vivo) · **Auth ✅**
-(login opcional JWT) · **Búsqueda de código en SPs ✅**.
+> (**multiusuario con roles admin/operador/viewer, login obligatorio**; ver ARCHITECTURE §7) ·
+> **Búsqueda de código en SPs ✅**.
 > **Eliminado:** integración de IA (Groq) y notificaciones/asistente por Telegram — quitadas del
 > backend (decisión de producto), ya no forman parte del alcance.
-**Pendiente:** lineage / grafo de dependencias de SPs · Fase 5 Redis (solo al escalar).
+
+**Pendiente:** lineage / grafo de dependencias de SPs · Fase 5 Redis (solo al escalar) ·
+auditoría de acciones por usuario (quién forzó qué consulta en vivo).
 
 ## Fase 0 — Medir (antes de tocar nada)
 - Instrumentar: contar queries/seg a Netezza y latencia por endpoint.
