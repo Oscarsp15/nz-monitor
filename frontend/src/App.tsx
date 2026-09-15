@@ -4,7 +4,6 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { useAuth } from './lib/auth'
 import { Alerts } from './pages/Alerts'
-import { CodeSearch } from './pages/CodeSearch'
 import { DataslicePage } from './pages/DataslicePage'
 import { Dataslices } from './pages/Dataslices'
 import { Overview } from './pages/Overview'
@@ -32,7 +31,6 @@ const router = createBrowserRouter([
       { path: 'dataslices', element: <Dataslices /> },
       { path: 'dataslice/:id', element: <DataslicePage /> },
       { path: 'owners', element: <Owners /> },
-      { path: 'buscar', element: <CodeSearch /> },
       { path: 'sftp', element: <Navigate to="/sftp/disco" replace /> },
       { path: 'sftp/disco', element: <SftpDisk /> },
       { path: 'sftp/archivos', element: <SftpOldFiles /> },
