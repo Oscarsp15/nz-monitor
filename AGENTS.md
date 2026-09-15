@@ -39,8 +39,17 @@ Hay **dos clases de consulta** con necesidades opuestas. Tratarlas igual es el e
 | **Investigación bajo demanda** | skew de UNA tabla, espacio de UNA BD que acabo de depurar | **el usuario, al hacer clic** | **Sí, en vivo y real** | **Query directa a Netezza, sin caché** |
 
 Principios derivados:
-1. **Lo que el usuario está depurando se consulta EN VIVO** al pedirlo. Nunca mostrar dato cacheado
-   en una vista de investigación activa.
+1. **Lo que el usuario está depurando se consulta EN VIVO** al pedirlo. En una vista de
+   investigación **siempre sale una consulta real**; lo que nunca puede pasar es mostrar un dato
+   viejo **como si fuera actual**.
+   🟡 **Revalidación visible (enmienda, medida en el appliance):** la consulta de catálogo tarda
+   **2–5.5 s** (medido: 2.6 s en DESA_MODELOS con 469 tablas, 5.6 s en DESA_RIESGOS con 11 124;
+   abrir la conexión son 0.34 s, o sea que el coste es el SQL). Dejar la pantalla en blanco esos
+   segundos hacía que pareciera colgada, y servir caché en silencio incumplía esta misma regla.
+   Regla: **pinta al instante el último valor conocido, marcado y atenuado con "actualizando…",
+   y dispara siempre la consulta real; al llegar, reemplaza y sella la frescura.** Si no hay valor
+   previo, esqueleto con el mismo mensaje. Prohibido: mostrar el valor viejo sin marcarlo, o no
+   lanzar la consulta.
 2. **Botón "Actualizar ahora"** (force-refresh que salta cualquier caché) en toda vista de análisis.
 3. **"Modo en vivo" acotado**: toggle por-vista (off por defecto) que refresca *solo esa vista*
    cada 15–30 s mientras el usuario la mira (p. ej. ver bajar el espacio durante un purge).
@@ -121,8 +130,8 @@ Principios derivados:
 | Salud de conexión | recolector (pasivo) | cada 1–2 min |
 | Alerts (disco SFTP, conexión) | recolector (pasivo) | cada 2–5 min |
 | Overview de espacio por BD | recolector (pasivo) | cada 5 min |
-| **Espacio de UNA BD (depurando)** | **en vivo + "Actualizar" / modo live** | on-demand |
-| **Skew/distribución de UNA tabla** | **en vivo**, caché 10 min, refresh manual | on-demand |
+| **Espacio de UNA BD (depurando)** | **en vivo con revalidación visible** (§2.1) | on-demand |
+| **Skew/distribución de UNA tabla** | **en vivo con revalidación visible** (§2.1) | on-demand |
 | Esquema / lineage / explorer | caché fuerte en SQLite | invalidar en deploy o manual |
 
 ---
