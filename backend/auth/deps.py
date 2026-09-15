@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from store import get_user
 
@@ -19,7 +19,8 @@ _UNAUTH = {"WWW-Authenticate": "Bearer"}
 
 # parámetros que fuerzan consulta en vivo a Netezza/SFTP (ver AGENTS §2 y §8)
 _LIVE_PARAMS = ("fresh", "live")
-_TRUTHY = {"1", "true", "yes", "on", "si", "sí"}
+#: EL MISMO parser que FastAPI aplica a `fresh: bool` en la firma del endpoint.
+_BOOL = TypeAdapter(bool)
 
 
 class CurrentUser(BaseModel):
@@ -129,17 +130,35 @@ def deny_password_pending_stream(user: StreamUser) -> CurrentUser:
     return _check_password_pending(user)
 
 
+def _forces_live(value: str | None) -> bool:
+    """¿Este valor del query string enciende la consulta en vivo? Lo decide **pydantic**.
+
+    Con una lista literal de valores "verdaderos" la guardia se desincronizaba del framework:
+    pydantic también acepta `t`/`y` (y en mayúsculas), así que `?fresh=t` esquivaba el filtro y
+    un `viewer` disparaba la consulta real (verificado: `?fresh=true` → 403, `?fresh=t` → 200).
+    Usando el mismo `TypeAdapter(bool)` que valida `fresh: bool` en el endpoint, la guardia y el
+    endpoint no pueden volver a discrepar. Lo que pydantic no sabe parsear no llega al endpoint
+    (FastAPI responde 422 antes de ejecutar nada), así que tratarlo como "no en vivo" es seguro.
+    """
+    if value is None:
+        return False
+    try:
+        return _BOOL.validate_python(value)
+    except ValidationError:
+        return False
+
+
 def deny_live_for_viewer(request: Request, user: AuthUser) -> CurrentUser:
     """Bloquea a `viewer` cualquier parámetro que fuerce consulta en vivo (`fresh`/`live`).
 
     Se aplica al router completo de datos, no endpoint por endpoint: así un endpoint nuevo con
-    `?fresh=` queda cubierto sin acordarse de nada.
+    `?fresh=` queda cubierto sin acordarse de nada. Ojo: **solo cubre endpoints con `fresh`/`live`**;
+    uno que consulte Netezza SIEMPRE (p. ej. `/api/table`) necesita además su `require_role`.
     """
     if role_at_least(user.role, "operador"):
         return user
     for param in _LIVE_PARAMS:
-        value = request.query_params.get(param)
-        if value is not None and value.strip().lower() in _TRUTHY:
+        if _forces_live(request.query_params.get(param)):
             raise HTTPException(
                 403,
                 "Tu rol solo permite ver los datos ya recolectados. Para consultar Netezza en "

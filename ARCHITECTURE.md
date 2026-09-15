@@ -129,6 +129,13 @@ require_role(min)          deny_live_for_viewer
   `/api/users` y `/api/settings` → admin (excepción: `POST /api/settings/sftp/test`, que abre una
   conexión real, es de operador); `/api/monitoring` → cualquier autenticado;
   `netezza`/`sftp` → autenticado, y `viewer` no puede mandar `fresh=true`/`live=true` (403).
+- ⚠️ **Dos límites de `deny_live_for_viewer`, ambos ya cerrados y con test**:
+  1. *Qué mira*: solo el query string. Las rutas que consultan Netezza **siempre** (`/api/table`,
+     `/api/table/slices`: 4 consultas, una es el `LIKE` sobre `NZ_QUERY_HISTORY`) no tienen `fresh`
+     que mirar, así que declaran `require_role("operador")` en la propia ruta.
+  2. *Cómo lo lee*: con `TypeAdapter(bool)`, el mismo parser que FastAPI aplica a `fresh: bool`.
+     Una lista literal de valores "verdaderos" se desincroniza del framework (pydantic acepta
+     también `t`/`y`, y por ahí se colaba la consulta en vivo con rol `viewer`).
 - **SSE**: `EventSource` no manda cabeceras, así que `/api/stream` (y solo ese) acepta
   `?token=<jwt>` además de la cabecera `Authorization`.
 - **Esquema** (mismo SQLite que snapshots/ajustes; se crea solo):

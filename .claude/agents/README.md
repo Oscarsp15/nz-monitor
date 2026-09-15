@@ -17,6 +17,17 @@ mediciones que el otro ya hizo.
 - **Agente nuevo solo** cuando el trabajo es de otra capa o el contexto anterior estorba más de lo
   que ayuda.
 
+## Quien orquesta no lee el código
+
+El contexto de quien coordina es presupuesto igual que los tokens de los agentes, y además no se
+recupera: todo lo que entra ahí (un diff largo, la salida de una suite, un archivo entero) se queda
+en la conversación hasta el final.
+
+- **Delegar la lectura, quedarse con la conclusión.** Quien orquesta lee informes, no archivos.
+- **Verificar también se delega**, al agente que ya tiene el contexto de esa capa o al de QA.
+- Excepción: comprobaciones de una línea cuyo resultado cabe en una línea (¿arranca?, ¿qué rama es?,
+  ¿está commiteado?). Para eso, abrir un agente cuesta más de lo que ahorra.
+
 ## Reparto de coste
 
 Modelo caro donde un error sale caro (SQL contra el appliance, revisión final antes del merge);

@@ -189,13 +189,20 @@ La respuesta lleva `age_seconds` y `stale_after_seconds`; un `error` real nunca 
 
 | Zona | viewer | operador | admin |
 |---|---|---|---|
-| Lectura (snapshots, tablas, dataslices, owners, búsqueda, SFTP, alertas) | ✅ | ✅ | ✅ |
+| Lectura (snapshots, listados de tablas, dataslices, owners, búsqueda, SFTP, alertas) | ✅ | ✅ | ✅ |
 | `?fresh=true` / `?live=true` (consulta en vivo a Netezza/SFTP) | ❌ 403 | ✅ | ✅ |
+| **Detalle de tabla** (`/api/table`, `/api/table/slices`) | ❌ 403 | ✅ | ✅ |
 | Prueba de conexión (`POST /api/settings/sftp/test`) | ❌ 403 | ✅ | ✅ |
 | Ajustes (`GET/PUT /api/settings/*`) | ❌ 403 | ❌ 403 | ✅ |
 | Usuarios (`/api/users/*`) | ❌ 403 | ❌ 403 | ✅ |
 | Sesión propia (`/api/auth/me`, `change-password`) | ✅ | ✅ | ✅ |
 
+- ⚠️ **`deny_live_for_viewer` solo mira el query string** (`fresh`/`live`). Un endpoint que consulte
+  Netezza **siempre** —el detalle de tabla no tiene `fresh` que mirar y dispara 4 consultas, una de
+  ellas el `LIKE` sobre `NZ_QUERY_HISTORY`— la esquiva entera: declara además
+  `require_role("operador")` en la ruta. Y esa guardia decide con **el mismo `TypeAdapter(bool)`
+  que usa FastAPI**, no con una lista de valores "verdaderos": con la lista, `?fresh=t` y `?fresh=y`
+  (que pydantic sí lee como `True`) pasaban de largo.
 - Usuarios en la tabla `app_user` (SQLite local), contraseñas con **pbkdf2** (`auth/security.py`).
   **Nunca** devolver `password_hash` ni secretos al frontend: proyectar con el modelo Pydantic.
 - Salvaguardas: nadie puede **borrarse/desactivarse a sí mismo** ni dejar el sistema **sin

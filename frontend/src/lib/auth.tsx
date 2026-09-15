@@ -8,6 +8,8 @@ interface AuthCtx {
   isLoading: boolean
   authenticated: boolean
   user: string | null
+  /** id numérico del usuario (de /auth/me) — comparar "soy yo" por id, no por username. */
+  userId: number | null
   role: Role | null
   isAdmin: boolean
   isOperador: boolean
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authenticated = !!status.data?.authenticated
   const role = me.data?.role ?? status.data?.role ?? null
   const user = me.data?.username ?? status.data?.user ?? null
+  const userId = me.data?.id ?? null
   const mustChangePassword = me.data?.must_change_password ?? status.data?.must_change_password ?? false
 
   const logout = () => {
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: status.isLoading || (authenticated && me.isLoading),
     authenticated,
     user,
+    userId,
     role,
     isAdmin: role === 'admin',
     // isOperador: operador tiene los permisos de operador Y de admin (jerarquía viewer < operador < admin)

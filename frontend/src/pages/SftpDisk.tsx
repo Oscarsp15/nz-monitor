@@ -1,25 +1,35 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { KpiCard } from '../components/KpiCard'
 import { RefreshButton } from '../components/RefreshButton'
 import { SearchInput } from '../components/SearchInput'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 
 function pct(s?: string): number {
   return s ? Number(s.replace('%', '')) || 0 : 0
 }
 
 export function SftpDisk() {
-  const cfg = useQuery({ queryKey: ['settings', 'sftp'], queryFn: api.getSftp })
-  const [path, setPath] = useState('')
-  const [duPath, setDuPath] = useState('')
+  const { isAdmin } = useAuth()
+  // /settings/sftp es solo-admin (AGENTS §9); operador/viewer no la consultan, pero sí leen
+  // disco/du con la ruta por defecto ('/') — antes `path` se quedaba en '' esperando un `cfg.data`
+  // que nunca llegaba para esos roles y la vista quedaba en blanco sin dato ni error.
+  const cfg = useQuery({ queryKey: ['settings', 'sftp'], queryFn: api.getSftp, enabled: isAdmin })
+  // '/' de entrada (para operador/viewer, sin `cfg`, y mientras el admin espera su config).
+  const [path, setPath] = useState('/')
+  const [duPath, setDuPath] = useState('/')
+  // Solo reemplaza el '/' inicial por la ruta configurada una vez, y solo si el usuario no
+  // tocó el campo todavía — si no, tras cargar `cfg` pisaría lo que el usuario ya escribió.
+  const pathTouched = useRef(false)
+  const duTouched = useRef(false)
 
   // inicializa las rutas con la ruta por defecto configurada (p.ej. /nzscratch/nz)
   useEffect(() => {
-    if (cfg.data) {
-      setPath((p) => p || cfg.data.default_path || '/')
-      setDuPath((p) => p || cfg.data.default_path || '/')
+    if (cfg.data?.default_path) {
+      if (!pathTouched.current) setPath(cfg.data.default_path)
+      if (!duTouched.current) setDuPath(cfg.data.default_path)
     }
   }, [cfg.data])
 
@@ -48,7 +58,14 @@ export function SftpDisk() {
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1">
             Ruta
-            <SearchInput value={path} onChange={setPath} placeholder="/" />
+            <SearchInput
+              value={path}
+              onChange={(v) => {
+                pathTouched.current = true
+                setPath(v)
+              }}
+              placeholder="/"
+            />
           </label>
           <RefreshButton onClick={() => disk.refetch()} busy={disk.isFetching} />
         </div>
@@ -83,7 +100,14 @@ export function SftpDisk() {
       <section className="panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           <h2 className="th">Carpetas más pesadas</h2>
-          <SearchInput value={duPath} onChange={setDuPath} placeholder="/ruta" />
+          <SearchInput
+            value={duPath}
+            onChange={(v) => {
+              duTouched.current = true
+              setDuPath(v)
+            }}
+            placeholder="/ruta"
+          />
         </div>
         {du.isFetching ? (
           <div className="px-4 py-8 text-center font-data text-body text-ink2">

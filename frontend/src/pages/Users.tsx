@@ -26,7 +26,7 @@ function ActivePill({ active }: { active: boolean }) {
 
 export function Users() {
   const qc = useQueryClient()
-  const { user: currentUser } = useAuth()
+  const { userId: currentUserId } = useAuth()
 
   const q = useQuery({ queryKey: ['users'], queryFn: api.users })
 
@@ -245,7 +245,7 @@ export function Users() {
                 )}
                 {!q.isError &&
                   rows.map((u) => {
-                    const isSelf = u.username === currentUser
+                    const isSelf = u.id === currentUserId
                     const rowBusy = pendingIds.has(u.id)
                     return (
                       <tr key={u.id} className="border-b border-line last:border-0 hover:bg-bg2">

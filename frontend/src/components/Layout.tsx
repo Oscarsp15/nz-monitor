@@ -246,7 +246,7 @@ export function Layout() {
                 <d.icon size={20} strokeWidth={1.6} />
                 {d.key === 'alertas' && <Badge count={alert.count} crit={alert.crit} />}
               </span>
-              <span className="w-full truncate px-0.5 text-center font-dense text-[10px] uppercase tracking-wide">
+              <span className="w-full truncate px-0.5 text-center font-dense text-micro uppercase tracking-wide">
                 {d.label}
               </span>
             </NavLink>
