@@ -17,7 +17,6 @@ from auth import (
     deny_password_pending,
     deny_password_pending_stream,
 )
-from auth.deps import require_auth_stream
 from auth.router import router as auth_router
 from config import check_secret_key, get_settings
 from monitoring.router import router as monitoring_router

@@ -51,7 +51,8 @@ def test_acepta_el_token_por_query(stream_client):
 
 def test_sigue_aceptando_la_cabecera(stream_client):
     token = _estrenar(stream_client)
-    assert stream_client.get("/espejo", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    r = stream_client.get("/espejo", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
 
 
 def test_sin_token_es_401(stream_client):
