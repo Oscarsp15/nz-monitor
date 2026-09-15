@@ -1,4 +1,9 @@
-"""Login opcional: hash de contraseña (pbkdf2, stdlib) + token JWT (jose)."""
+"""Primitivas de auth: hash de contraseña (pbkdf2, stdlib) + token JWT (jose).
+
+El token lleva `sub` (usuario), `uid` (id en `app_user`) y `role`, para que las dependencias
+puedan decidir permisos sin pegarle a la BD... aunque igual se revalida contra la BD en cada
+request (el usuario puede haber sido borrado o desactivado tras emitir el token).
+"""
 import base64
 import hashlib
 import hmac
@@ -28,14 +33,20 @@ def verify_password(pw: str, stored: str) -> bool:
     return hmac.compare_digest(test, dk)
 
 
-def make_token(user: str) -> str:
+def make_token(user: str, uid: int, role: str) -> str:
+    """JWT firmado con SECRET_KEY: {sub, uid, role, exp} (ver CONTRATO / ARCHITECTURE §7)."""
     s = get_settings()
     exp = datetime.now(UTC) + timedelta(minutes=s.jwt_expire_minutes)
-    return jwt.encode({"sub": user, "exp": exp}, s.secret_key, algorithm="HS256")
+    claims = {"sub": user, "uid": uid, "role": role, "exp": exp}
+    return jwt.encode(claims, s.secret_key, algorithm="HS256")
 
 
-def verify_token(token: str) -> str | None:
+def verify_token(token: str) -> dict | None:
+    """Devuelve los claims del token, o None si es inválido/expirado/con claims incompletos."""
     try:
-        return jwt.decode(token, get_settings().secret_key, algorithms=["HS256"]).get("sub")
+        claims = jwt.decode(token, get_settings().secret_key, algorithms=["HS256"])
     except JWTError:
         return None
+    if not claims.get("sub") or claims.get("uid") is None or not claims.get("role"):
+        return None
+    return claims

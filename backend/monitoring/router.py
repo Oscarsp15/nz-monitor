@@ -8,9 +8,26 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 
 from collector.jobs import ALERTS, HEALTH, SPACE_OVERVIEW
+from config import get_settings
 from store import latest_snapshot, snapshot_history
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
+
+#: cuántos intervalos del recolector pueden pasar antes de declarar el dato obsoleto.
+#: 3× da margen a un ciclo perdido (reintento, red lenta) sin tapar un recolector parado.
+STALE_FACTOR = 3
+
+
+def _interval_seconds(metric_type: str) -> int:
+    """Intervalo con el que el recolector refresca esta métrica (AGENTS §6)."""
+    s = get_settings()  # en caliente, no al importar: el intervalo se configura por .env
+    return {HEALTH: s.collector_health_interval_seconds,
+            ALERTS: s.collector_alerts_interval_seconds,
+            SPACE_OVERVIEW: s.collector_space_interval_seconds}.get(metric_type, 300)
+
+
+def stale_threshold(metric_type: str) -> int:
+    return _interval_seconds(metric_type) * STALE_FACTOR
 
 
 def _serve(metric_type: str) -> dict:
@@ -18,15 +35,24 @@ def _serve(metric_type: str) -> dict:
     if snap is None:
         # el recolector aún no ha corrido (o no hay datos todavía)
         return {"metric": metric_type, "status": "empty", "collected_at": None,
-                "age_seconds": None, "data": None}
+                "age_seconds": None, "stale_after_seconds": stale_threshold(metric_type),
+                "data": None}
     age = None
     try:
         collected = datetime.fromisoformat(snap["collected_at"])
         age = round((datetime.now(UTC) - collected).total_seconds(), 1)
     except ValueError:
         pass
-    return {"metric": metric_type, "status": snap["status"], "collected_at": snap["collected_at"],
-            "age_seconds": age, "error": snap["error"], "data": snap["data"]}
+    # Con el recolector parado, el último snapshot seguía sirviéndose como "ok" para siempre:
+    # un dato de 11 h se pintaba como actual. Un snapshot más viejo que 3× su intervalo se marca
+    # `stale` (el `error` real manda: no se tapa un fallo con "obsoleto").
+    status = snap["status"]
+    limit = stale_threshold(metric_type)
+    if status == "ok" and age is not None and age > limit:
+        status = "stale"
+    return {"metric": metric_type, "status": status, "collected_at": snap["collected_at"],
+            "age_seconds": age, "stale_after_seconds": limit,
+            "error": snap["error"], "data": snap["data"]}
 
 
 @router.get("/health")

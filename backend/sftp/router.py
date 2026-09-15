@@ -1,4 +1,8 @@
-"""Endpoints SFTP (en vivo, on-demand). TODO(prod): auth (AGENTS §9)."""
+"""Endpoints SFTP (en vivo, on-demand).
+
+Auth: se monta con `deny_live_for_viewer` en `main.py` (sesión obligatoria; `viewer` puede leer
+pero no forzar `fresh`/`live`).
+"""
 from fastapi import APIRouter, HTTPException
 
 from . import service

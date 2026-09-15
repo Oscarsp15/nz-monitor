@@ -137,6 +137,81 @@ Herramienta **densa**: rejilla base de **4px**. Preferir hairlines a sombras.
 
 ---
 
+## 9. Adaptativo: móvil, tablet y escritorio
+
+La densidad de §4 es una virtud en un monitor de 27" y un problema en un móvil. Esta sección manda
+sobre §4 cuando la pantalla es pequeña: **la densidad se negocia, la legibilidad y el pulgar no**.
+
+### 9.1 Puntos de corte (los de Tailwind que ya usa el proyecto)
+
+| Rango | Dispositivo típico | Disposición |
+|---|---|---|
+| `< 640px` | móvil vertical | una columna · navegación inferior · tabla en fichas |
+| `640–1023px` | móvil apaisado y tablet vertical | dos columnas de KPI · tabla con columnas prioritarias |
+| `≥ 1024px` (`lg`) | tablet apaisada y escritorio | barra lateral fija · tabla completa |
+
+El salto a "escritorio" lo decide el **ancho**, no el tipo de aparato: una tablet en horizontal con
+1024px o más se sirve como escritorio, sin caso especial.
+
+### 9.2 El pulgar manda (táctil)
+
+- **Área tocable mínima 44×44px** para todo lo accionable (botones, filas clicables, casillas,
+  paginación), con al menos 8px de separación entre dos objetivos. La fila de tabla puede seguir
+  midiendo 28px de alto *visual* en escritorio, pero en táctil crece a 44px.
+- **Nada vive solo en `hover`.** Si un dato o una acción solo aparece al pasar el ratón, en táctil
+  no existe: necesita equivalente visible o accesible al tocar.
+- Las acciones que se usan de pie frente al servidor —**"Actualizar ahora"** y **"Modo en vivo"**—
+  quedan alcanzables con el pulgar (mitad inferior o barra fija), no solo en la esquina superior.
+- Destructivo (borrar usuario, resetear contraseña) **nunca** al alcance accidental del pulgar sin
+  confirmación explícita.
+
+### 9.3 Tablas densas en pantallas pequeñas
+
+La tabla es el corazón (§5) y es donde más duele. Por orden de preferencia:
+
+1. **`≥ 1024px`**: tabla completa, como está.
+2. **`640–1023px`**: se ocultan las columnas de menor prioridad, no se encoge la tipografía.
+   Prioridad de columnas en Tablas: `TABLA > ESPACIO > SKEW > BASE > ESQUEMA > OWNER > DISTRIBUCIÓN`.
+3. **`< 640px`**: **ficha por fila**, no scroll horizontal. Cada ficha: nombre de la tabla en
+   `--font-data` a ancho completo, y debajo las dos o tres cifras que importan con su etiqueta
+   Condensed. El scroll horizontal en una tabla de 7 columnas es inusable con una mano.
+
+El **orden** (clic en encabezado) se mantiene en móvil como un selector explícito de "ordenar por",
+porque sin encabezados no hay dónde pulsar.
+
+### 9.4 Tipografía y espacio por pantalla
+
+- La escala micro de 11px (§2) es **solo para `≥ 1024px`**. En móvil el mínimo es **12px**, y los
+  datos principales no bajan de 14px.
+- Márgenes laterales: 16px en móvil, 24px en tablet, 32px en escritorio.
+- Los KPI pasan de fila de 4 a rejilla de 2×2 en tablet y a columna en móvil, **sin** encoger la
+  cifra: el número es el dato, se sacrifica el espacio en blanco antes que el tamaño.
+
+### 9.5 Ventanas, notch y PWA
+
+- Respetar el área segura (`env(safe-area-inset-*)`) arriba y abajo: la barra inferior de navegación
+  sin eso queda bajo la barra de gestos del teléfono.
+- Instalable (manifest + iconos) y utilizable en modo `standalone`, donde no hay barra de direcciones
+  ni botón "atrás" del navegador: **toda pantalla necesita su propia vuelta atrás**.
+- El color del `html` acompaña al tema para que el rebote del scroll no muestre una franja blanca.
+
+### 9.6 Cómo se comprueba (obligatorio antes de dar por buena una pantalla)
+
+Se verifica en **seis combinaciones**, en tema claro y oscuro:
+
+| Viewport | Representa |
+|---|---|
+| 390 × 844 | móvil vertical (iPhone 14 / Pixel) |
+| 820 × 1180 | tablet vertical (iPad Air) |
+| 1280 × 800 | portátil / tablet apaisada |
+| 1920 × 1080 | escritorio |
+
+Y en todas: sin scroll horizontal, sin texto truncado sin remedio, sin objetivo táctil por debajo de
+44px, y la navegación inferior sin solaparse con el área segura. No basta con encoger la ventana del
+navegador: hay que mirarlo con emulación táctil (o en un aparato real) porque `hover` engaña.
+
+---
+
 ## 7. Para que NO parezca hecho por IA (checklist)
 
 ❌ Evitar | ✅ Hacer

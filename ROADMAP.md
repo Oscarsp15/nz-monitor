@@ -3,14 +3,28 @@
 No reescribir todo de golpe. Migrar el `nz-monitor` actual por fases, midiendo el alivio de carga
 en Netezza en cada paso. Cada fase es desplegable por sí sola.
 
-> **Estado (v2.15):** Fase 1 ✅ · Fase 2 ✅ · Fase 3 ✅ (`?fresh=true` + modo en vivo) ·
+> **Estado (v2.16):** Fase 1 ✅ · Fase 2 ✅ · Fase 3 ✅ (`?fresh=true` + modo en vivo) ·
 > Frontend React/PWA ✅ (nav por niveles: bottom nav móvil + sidebar desktop) · Vistas: Resumen
 > (dashboard con tendencias + disco SFTP), Tablas/Owners/Dataslices con drill-down ds→tablas→detalle,
-> Alertas, Asistente (chat IA), Ajustes · Alertas (dataslice + disco SFTP) por snapshot + **Telegram
-> push** con **IA (Groq)** y **asistente conversacional** (tool-calling) · **SFTP** (disco + archivos
+> Alertas, Ajustes · Alertas (dataslice + disco SFTP) por snapshot · **SFTP** (disco + archivos
 > viejos) · Config 100% por la web (cifrada) · **Fase 4 SSE ✅** (dashboard en vivo) · **Auth ✅**
-(login opcional JWT) · **Búsqueda de código en SPs ✅** · IA con **SQL accionable ✅** (GROOM/CTAS).
-**Pendiente:** lineage / grafo de dependencias de SPs · Fase 5 Redis (solo al escalar).
+> (**multiusuario con roles admin/operador/viewer, login obligatorio**; ver ARCHITECTURE §7) ·
+> **Búsqueda de código en SPs ✅**.
+> **Eliminado:** integración de IA (Groq) y notificaciones/asistente por Telegram — quitadas del
+> backend (decisión de producto), ya no forman parte del alcance.
+
+**Pendiente:** lineage / grafo de dependencias de SPs · Fase 5 Redis (solo al escalar) ·
+auditoría de acciones por usuario (quién forzó qué consulta en vivo).
+
+**Rendimiento del catálogo (medido en el appliance, on-prem, VPN):**
+- Resumen de base en **una** consulta (`SUM(CASE WHEN skew>8 …)` en el mismo escaneo):
+  **2.13 s → 1.05 s** (DESA_RIESGOS, 11 155 tablas).
+- `db=*` sin N+1 (distribución de toda la página en un `UNION ALL`): **3.17 s → 2.80 s** y,
+  sobre todo, **8 consultas → 2**, constante con el nº de bases de la página.
+- Timeout de **conexión** (`NETEZZA_CONNECT_TIMEOUT`, 10 s): con la VPN caída el request ya no
+  se cuelga sin límite.
+- Los pasivos degradan `ok → stale` a 3× el intervalo del recolector (ya no se sirve un dato de
+  11 h como actual).
 
 ## Fase 0 — Medir (antes de tocar nada)
 - Instrumentar: contar queries/seg a Netezza y latencia por endpoint.

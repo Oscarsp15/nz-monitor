@@ -4,12 +4,11 @@
 docker-compose lo arranca como servicio aparte con APP_ROLE=collector y replicas: 1.
 """
 import logging
-import threading
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-import notify
-from config import get_settings
+from auth.bootstrap import bootstrap_users  # sin pasar por auth/__init__ (no arrastra FastAPI)
+from config import check_secret_key, get_settings
 from store import init_db
 
 from . import jobs
@@ -20,10 +19,12 @@ log = logging.getLogger("collector")
 
 def main() -> None:
     s = get_settings()
+    check_secret_key(s)
     if s.app_role != "collector":
         log.warning("APP_ROLE=%r (esperado 'collector'); arranco el recolector igual.", s.app_role)
 
     init_db()
+    bootstrap_users()  # comparte el SQLite con la API: migra el login antiguo / siembra el admin
 
     plan = [
         (jobs.HEALTH, jobs.collect_health, s.collector_health_interval_seconds),
@@ -40,9 +41,6 @@ def main() -> None:
             jobs.run_job, "interval", args=[metric_type, fn], seconds=interval,
             id=metric_type, max_instances=1, coalesce=True,
         )
-
-    # asistente conversacional por Telegram (long-polling) en hilo aparte — opcional
-    threading.Thread(target=notify.assistant.run, daemon=True, name="tg-assistant").start()
 
     log.info("recolector arrancado (health=%ss, space=%ss)",
              s.collector_health_interval_seconds, s.collector_space_interval_seconds)

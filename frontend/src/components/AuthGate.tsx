@@ -1,17 +1,24 @@
-import { useQuery } from '@tanstack/react-query'
 import { type ReactNode } from 'react'
 
-import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { ChangePassword } from '../pages/ChangePassword'
 import { Login } from '../pages/Login'
 
-/** Si hay login configurado y no estás autenticado, muestra el Login; si no, la app. */
+/**
+ * Login SIEMPRE obligatorio (ya no hay "modo abierto"). Sin sesión → Login; con
+ * must_change_password → pantalla forzada de cambio de contraseña, sin salida a otra ruta.
+ */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const q = useQuery({ queryKey: ['auth', 'status'], queryFn: api.authStatus, retry: false })
-  if (q.isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-bg0 text-ink2">…</div>
+  const { isLoading, authenticated, mustChangePassword } = useAuth()
+
+  if (isLoading) {
+    return <div className="min-h-app flex items-center justify-center bg-bg0 text-ink2">…</div>
   }
-  if (q.data && q.data.configured && !q.data.authenticated) {
+  if (!authenticated) {
     return <Login />
+  }
+  if (mustChangePassword) {
+    return <ChangePassword />
   }
   return <>{children}</>
 }

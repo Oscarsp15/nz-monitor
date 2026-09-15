@@ -54,12 +54,12 @@ export function Overview() {
         <PageSkeleton kpis={5} panels={2} />
       ) : (
       <div className="reveal space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <KpiCard label="Espacio total" value={gb(totalGb)} />
         <KpiCard label="Tablas" value={int(totalTables)} />
         <KpiCard label="Bases" value={int(dbs.length)} />
         {sftp && (
-          <button onClick={() => navigate('/sftp/disco')} className="panel px-4 py-3 text-left">
+          <button onClick={() => navigate('/sftp/disco')} className="tap44-row panel px-4 py-3 text-left">
             <div className="th">Disco SFTP</div>
             <div className="mt-1 font-data kpi-value" style={{ color: sftpColor }}>
               {sftp.pct}%
@@ -67,7 +67,7 @@ export function Overview() {
             <div className="mt-0.5 truncate font-data text-micro text-ink2">{sftp.path}</div>
           </button>
         )}
-        <button onClick={() => navigate('/alertas')} className="panel px-4 py-3 text-left">
+        <button onClick={() => navigate('/alertas')} className="tap44-row panel px-4 py-3 text-left">
           <div className="th">Alertas</div>
           <div
             className="mt-1 font-data kpi-value"
@@ -88,7 +88,7 @@ export function Overview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TrendPanel
           label="Espacio total · tendencia"
           current={gb(spaceVals[spaceVals.length - 1] ?? totalGb)}
@@ -141,7 +141,7 @@ export function Overview() {
                 <tr
                   key={d.db}
                   onClick={() => navigate(`/tablas?db=${encodeURIComponent(d.db)}`)}
-                  className="cursor-pointer border-b border-line last:border-0 hover:bg-bg2"
+                  className="tap44-row cursor-pointer border-b border-line last:border-0 hover:bg-bg2"
                 >
                   <td className="px-4 py-1.5 font-data text-body text-ink0">{d.db}</td>
                   <td className="num px-4 py-1.5 text-body text-ink1">{int(d.table_count)}</td>

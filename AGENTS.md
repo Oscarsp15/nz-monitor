@@ -39,8 +39,22 @@ Hay **dos clases de consulta** con necesidades opuestas. Tratarlas igual es el e
 | **Investigación bajo demanda** | skew de UNA tabla, espacio de UNA BD que acabo de depurar | **el usuario, al hacer clic** | **Sí, en vivo y real** | **Query directa a Netezza, sin caché** |
 
 Principios derivados:
-1. **Lo que el usuario está depurando se consulta EN VIVO** al pedirlo. Nunca mostrar dato cacheado
-   en una vista de investigación activa.
+1. **Lo que el usuario está depurando se consulta EN VIVO** al pedirlo. En una vista de
+   investigación **siempre sale una consulta real**; lo que nunca puede pasar es mostrar un dato
+   viejo **como si fuera actual**.
+   🟡 **Revalidación visible (enmienda, medida en el appliance):** la consulta de catálogo tarda
+   **2–5.5 s** (medido: 2.6 s en DESA_MODELOS con 469 tablas, 5.6 s en DESA_RIESGOS con 11 124;
+   abrir la conexión son 0.34 s, o sea que el coste es el SQL). Dejar la pantalla en blanco esos
+   segundos hacía que pareciera colgada, y servir caché en silencio incumplía esta misma regla.
+   Regla: **pinta al instante el último valor conocido, marcado y atenuado con "actualizando…",
+   y dispara siempre la consulta real; al llegar, reemplaza y sella la frescura.** Si no hay valor
+   previo, esqueleto con el mismo mensaje. Prohibido: mostrar el valor viejo sin marcarlo, o no
+   lanzar la consulta.
+   **Contrato de backend:** toda vista de investigación (`/api/overview`, `/api/db_summary`,
+   `/api/tables`, `/api/owners`, `/api/dataslices`, `/api/dataslice/*`, `/api/table`,
+   `/api/table/slices`) devuelve **siempre `at`** (marca de tiempo del dato) **y `from_cache`**.
+   Sin eso el frontend no puede sellar la frescura ni marcar "actualizando…". Un endpoint de
+   investigación nuevo que no los devuelva está incompleto.
 2. **Botón "Actualizar ahora"** (force-refresh que salta cualquier caché) en toda vista de análisis.
 3. **"Modo en vivo" acotado**: toggle por-vista (off por defecto) que refresca *solo esa vista*
    cada 15–30 s mientras el usuario la mira (p. ej. ver bajar el espacio durante un purge).
@@ -121,9 +135,14 @@ Principios derivados:
 | Salud de conexión | recolector (pasivo) | cada 1–2 min |
 | Alerts (disco SFTP, conexión) | recolector (pasivo) | cada 2–5 min |
 | Overview de espacio por BD | recolector (pasivo) | cada 5 min |
-| **Espacio de UNA BD (depurando)** | **en vivo + "Actualizar" / modo live** | on-demand |
-| **Skew/distribución de UNA tabla** | **en vivo**, caché 10 min, refresh manual | on-demand |
+| **Espacio de UNA BD (depurando)** | **en vivo con revalidación visible** (§2.1) | on-demand |
+| **Skew/distribución de UNA tabla** | **en vivo con revalidación visible** (§2.1) | on-demand |
 | Esquema / lineage / explorer | caché fuerte en SQLite | invalidar en deploy o manual |
+
+**Un snapshot viejo NO es un dato bueno.** Los endpoints pasivos degradan `ok → stale` cuando la
+edad del snapshot supera **3× el intervalo del recolector de esa métrica** (el de arriba). Con el
+recolector parado, antes se servía un dato de 11 h como `"ok"` — justo lo que prohíbe §2.
+La respuesta lleva `age_seconds` y `stale_after_seconds`; un `error` real nunca se tapa con `stale`.
 
 ---
 
@@ -157,7 +176,42 @@ Principios derivados:
 ## 9. Seguridad
 
 - Credenciales **cifradas en reposo** (`encrypt_value`/`decrypt_value`). **Nunca** loguear secretos.
-- **Auth en todos los endpoints** (`Depends(get_current_user)`).
+- **`SECRET_KEY` propia, obligatoria.** Firma los JWT y deriva el cifrado de los secretos guardados.
+  El default del código es público: con él se forja un token de administrador sin credenciales, así
+  que `check_secret_key()` **aborta el arranque** (API y recolector) si sigue puesto. Los `.env` se
+  resuelven por **ruta absoluta** (raíz y `backend/`, gana el segundo): con rutas relativas, lanzar
+  el proceso desde otro directorio leía otro archivo y la clave puesta se ignoraba en silencio.
+- **Login SIEMPRE obligatorio.** No existe "modo abierto": todo endpoint (salvo `/health` y
+  `/api/auth/status|login`) exige un JWT válido de un usuario **existente y activo** → si no, 401.
+  Las dependencias viven en `backend/auth/deps.py` (`require_auth`, `require_role`,
+  `deny_live_for_viewer`) y se montan **por router** en `main.py`, no con `if` sueltos.
+- **Roles: `viewer` < `operador` < `admin`.** Matriz (implementada, no aspiracional):
+
+| Zona | viewer | operador | admin |
+|---|---|---|---|
+| Lectura (snapshots, listados de tablas, dataslices, owners, búsqueda, SFTP, alertas) | ✅ | ✅ | ✅ |
+| `?fresh=true` / `?live=true` (consulta en vivo a Netezza/SFTP) | ❌ 403 | ✅ | ✅ |
+| **Detalle de tabla** (`/api/table`, `/api/table/slices`) | ❌ 403 | ✅ | ✅ |
+| Prueba de conexión (`POST /api/settings/sftp/test`) | ❌ 403 | ✅ | ✅ |
+| Ajustes (`GET/PUT /api/settings/*`) | ❌ 403 | ❌ 403 | ✅ |
+| Usuarios (`/api/users/*`) | ❌ 403 | ❌ 403 | ✅ |
+| Sesión propia (`/api/auth/me`, `change-password`) | ✅ | ✅ | ✅ |
+
+- ⚠️ **`deny_live_for_viewer` solo mira el query string** (`fresh`/`live`). Un endpoint que consulte
+  Netezza **siempre** —el detalle de tabla no tiene `fresh` que mirar y dispara 4 consultas, una de
+  ellas el `LIKE` sobre `NZ_QUERY_HISTORY`— la esquiva entera: declara además
+  `require_role("operador")` en la ruta. Y esa guardia decide con **el mismo `TypeAdapter(bool)`
+  que usa FastAPI**, no con una lista de valores "verdaderos": con la lista, `?fresh=t` y `?fresh=y`
+  (que pydantic sí lee como `True`) pasaban de largo.
+- Usuarios en la tabla `app_user` (SQLite local), contraseñas con **pbkdf2** (`auth/security.py`).
+  **Nunca** devolver `password_hash` ni secretos al frontend: proyectar con el modelo Pydantic.
+- Salvaguardas: nadie puede **borrarse/desactivarse a sí mismo** ni dejar el sistema **sin
+  administradores activos** (→ 400 con mensaje en español).
+- **Contraseña pendiente de estrenar** (admin inicial del `.env`, usuario nuevo, reseteo de un
+  administrador): el backend responde **403 a todo** salvo `/api/auth/*` hasta que se cambie
+  (`deny_password_pending`). La pantalla forzada del frontend es comodidad, **no** el control.
+- El SSE `/api/stream` también exige sesión; como `EventSource` no manda cabeceras, **solo ese
+  endpoint** acepta el token por query string (`?token=<jwt>`).
 - Validación de entrada con **Pydantic**; SQL **parametrizado** o lista blanca de identificadores.
 - Netezza en **modo lectura** por defecto.
 
@@ -180,7 +234,7 @@ Principios derivados:
 - [ ] ¿Reutiliza el pool de Netezza? ¿Sin reconexión por catálogo?
 - [ ] ¿Las queries tienen timeout?
 - [ ] ¿Datos de investigación se sirven **en vivo**, no cacheados?
-- [ ] ¿Endpoints con auth y entrada validada?
+- [ ] ¿Endpoints con auth **y el rol correcto** (§9) y entrada validada?
 - [ ] ¿Las vistas con varias consultas cargan **atómicas** (todo junto, atenuado mientras), sin aparición escalonada? (§8/§12)
 
 ---

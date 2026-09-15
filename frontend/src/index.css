@@ -18,6 +18,19 @@
   --crit: #e5484d;
   --info: #5ba2c9;
   --live: #36e0c5;
+  /* Tipografía adaptativa (DESIGN §9.4): la escala micro de 11px es solo para ≥1024px; por
+     debajo, mínimo 12px, y los datos principales (--fs-body) no bajan de 14px. */
+  --fs-micro: 0.75rem; /* 12px */
+  --fs-body: 0.875rem; /* 14px */
+}
+
+@media (min-width: 1024px) {
+  :root,
+  [data-theme='dark'],
+  [data-theme='light'] {
+    --fs-micro: 0.6875rem; /* 11px — densidad §4, solo escritorio */
+    --fs-body: 0.8125rem; /* 13px */
+  }
 }
 
 /* Tema claro: papel + tinta, mismos semánticos con más contraste */
@@ -72,6 +85,41 @@
       font-size: 1.75rem; /* 28px en escritorio */
     }
   }
+}
+
+/* Objetivo táctil 44×44px (DESIGN §9.2): la fila/botón denso de escritorio no cambia — esto
+ * solo actúa cuando no hay hover disponible o el puntero es grueso (dedo), sin importar el
+ * ancho de la ventana (una tablet táctil de 1280px también lo necesita). */
+@media (hover: none), (pointer: coarse) {
+  .tap44 {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tap44-row {
+    min-height: 44px;
+  }
+  /* Bug medido en celular real (PWA instalada): Safari/iOS hace zoom automático de toda la
+   * página al enfocar un campo con font-size < 16px. La escala densa de DESIGN §2 usa 12–14px
+   * en móvil (ver --fs-body arriba), así que en táctil todo campo de texto sube a 16px — la
+   * densidad de escritorio (mouse) no se toca. La especificidad de `:not()` (dos veces) supera
+   * a las utilidades `.text-body`/`.font-data` sin necesitar `!important`. */
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Pantallas centradas a pantalla completa (Login, cambio de contraseña forzado): `100vh` no se
+ * achica con el teclado virtual ni con la barra de Safari, así que el bloque queda centrado en
+ * una caja más alta que lo visible y aparece descuadrado — `100dvh` sí sigue el viewport visible.
+ * Además `body` ya mete el área segura como padding (ver arriba); si esta caja también reclama
+ * el 100% del viewport, el área segura se cuenta dos veces y empuja el bloque — se resta aquí
+ * para que sumen exactamente el viewport. Si `calc()`/`dvh` no se soportan, el navegador ignora
+ * la declaración entera y se queda con el `100vh` de la línea anterior. */
+.min-h-app {
+  min-height: 100vh;
+  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
 }
 
 /* Foco accesible en --live */

@@ -59,7 +59,7 @@ export function SftpOldFiles() {
           <input
             value={path}
             onChange={(e) => setPath(e.target.value)}
-            className="w-56 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
+            className="tap44 w-56 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -69,7 +69,7 @@ export function SftpOldFiles() {
             min={0}
             value={days}
             onChange={(e) => setDays(Math.max(0, Number(e.target.value) || 0))}
-            className="w-28 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
+            className="tap44 w-28 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -78,20 +78,20 @@ export function SftpOldFiles() {
             value={pattern}
             onChange={(e) => setPattern(e.target.value)}
             placeholder="*.csv"
-            className="w-32 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0 placeholder:text-ink2"
+            className="tap44 w-32 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0 placeholder:text-ink2"
           />
         </label>
         <button
           type="submit"
           disabled={q.isFetching}
-          className="inline-flex items-center gap-1.5 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+          className="tap44 inline-flex items-center justify-center gap-1.5 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
         >
           <Search size={14} strokeWidth={1.6} /> Buscar
         </button>
       </form>
 
       {params && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <KpiCard label="Encontrados" value={String(rows.length)} loading={q.isLoading} />
           <KpiCard label="Antigüedad" value={`> ${params.days} días`} />
           <KpiCard label="Patrón" value={params.pattern} />

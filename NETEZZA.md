@@ -93,8 +93,15 @@ El verbo (acción) se deduce del inicio del SQL: DROP/TRUNCATE/INSERT/UPDATE/DEL
 - **`ds_percentused` es TEXT** → `CAST(... AS FLOAT)` falla (*Cannot cast TEXT to FLOAT8*). Parsear en
   la app o `CAST AS NUMERIC(6,2)`.
 - **`_V_DSLICES` (con S) NO existe** → es `_V_DSLICE`.
-- **`_V_TABLE_DIST_MAP` es por-base** → en modo "todas las bases" no se puede unir cross-db en una
-  query; hacer una **2ª pasada** por cada base presente en el resultado (≤25 filas → pocas queries).
+- **`_V_TABLE_DIST_MAP` es por-base** → en modo "todas las bases" no se puede unir cross-db (se
+  comprobó: la única vista `%DIST%` del catálogo es esa, no hay variante `_XDB`). La 2ª pasada es
+  **UNA sola query**: `UNION ALL` de la vista calificada por cada base de la página
+  (`{db}.._V_TABLE_DIST_MAP WHERE objid IN (...)`). Los `objid` son únicos en todo el appliance,
+  así que el resultado se indexa por objid sin ambigüedad. **Una query por base era un N+1**
+  (7 bases = 7 queries = 2.08 s; el `UNION ALL` = 1.85 s y, sobre todo, no crece con las bases).
+- **Un COUNT extra casi nunca merece otra query**: el nº de tablas "mal distribuidas" sale del
+  mismo escaneo con `SUM(CASE WHEN s.skew>8 THEN 1 ELSE 0 END)`. Fundir `overview` + `skewed_count`
+  bajó el resumen de base de **2.13 s a 1.05 s** (medido en DESA_RIESGOS, 11 155 tablas).
 - **Una conexión basta** para todas las bases gracias a las vistas `_XDB`/`_SYS_OBJECT_*`.
 - **Última acción**: el historial nativo estructurado `$hist_table_access` está **congelado (2024-11)**;
   la fuente viva es el **texto** en `NZ_QUERY_HISTORY`. Para 1 tabla → `LIKE` directo (rápido). Para

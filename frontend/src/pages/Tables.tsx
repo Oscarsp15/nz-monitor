@@ -1,8 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
+import { BlockedHint } from '../components/BlockedHint'
 import { ExportButton, SearchInput } from '../components/SearchInput'
 import { FreshnessSeal } from '../components/FreshnessSeal'
 import { KpiCard } from '../components/KpiCard'
@@ -14,18 +15,26 @@ import { exportToExcel, stamp } from '../lib/exportXlsx'
 import { ageFromAt, gb, int } from '../lib/format'
 import { useDebounced } from '../hooks/useDebounced'
 import { useLiveMode } from '../hooks/useLiveMode'
+import { useTableDetailLink } from '../hooks/useTableDetailLink'
 
-const COLS: { key: string; label: string; order?: string; num?: boolean }[] = [
-  { key: 'table', label: 'Tabla' },
-  { key: 'db', label: 'Base' },
-  { key: 'owner', label: 'Owner' },
-  { key: 'distribute_on', label: 'Distribución' },
-  { key: 'space_gb', label: 'Espacio', order: 'space', num: true },
-  { key: 'skew', label: 'Skew', order: 'skew', num: true },
+// `priority` = orden de preferencia en 640–1023px (DESIGN §9.3): TABLA > ESPACIO > SKEW > BASE >
+// ESQUEMA > OWNER > DISTRIBUCIÓN. Las de priority > 4 se ocultan en tablet, no se encoge la letra.
+const COLS: { key: string; label: string; order?: string; num?: boolean; priority: number }[] = [
+  { key: 'table', label: 'Tabla', priority: 1 },
+  { key: 'db', label: 'Base', priority: 4 },
+  { key: 'schema', label: 'Esquema', priority: 5 },
+  { key: 'owner', label: 'Owner', priority: 6 },
+  { key: 'distribute_on', label: 'Distribución', priority: 7 },
+  { key: 'space_gb', label: 'Espacio', order: 'space', num: true, priority: 2 },
+  { key: 'skew', label: 'Skew', order: 'skew', num: true, priority: 3 },
+]
+const SORT_OPTIONS = [
+  { value: 'space', label: 'Espacio' },
+  { value: 'skew', label: 'Skew' },
 ]
 
 export function Tables() {
-  const navigate = useNavigate()
+  const { open: openDetail, allowed: detailAllowed, blocked: detailBlocked, dismissBlocked } = useTableDetailLink()
   const [sp, setSp] = useSearchParams()
   const dbsQ = useQuery({ queryKey: ['databases'], queryFn: api.databases })
 
@@ -35,6 +44,7 @@ export function Tables() {
   const [searchRaw, setSearchRaw] = useState('')
   const search = useDebounced(searchRaw.trim())
   const freshRef = useRef(false)
+  const summaryFreshRef = useRef(false)
 
   const setDb = (value: string) => {
     setSp(value === '*' ? {} : { db: value })
@@ -51,11 +61,24 @@ export function Tables() {
     placeholderData: keepPreviousData, // paginación/búsqueda suave (sin re-esqueleto)
   })
 
+  const summary = useQuery({
+    queryKey: ['dbsummary', db],
+    queryFn: async () => {
+      const fresh = summaryFreshRef.current
+      summaryFreshRef.current = false
+      return api.dbSummary(db, fresh)
+    },
+    placeholderData: keepPreviousData,
+  })
+
+  // "Actualizar ahora" debe refrescar TODO (AGENTS §2.1/§8): filas Y KPIs, no solo la tabla.
   const refreshNow = () => {
     freshRef.current = true
+    summaryFreshRef.current = true
     q.refetch()
+    summary.refetch()
   }
-  const { live, setLive } = useLiveMode(refreshNow)
+  const { live, setLive, allowed: liveAllowed } = useLiveMode(refreshNow)
 
   const setOrderCol = (col?: string) => {
     if (!col) return
@@ -63,14 +86,12 @@ export function Tables() {
     setPage(0)
   }
 
-  const summary = useQuery({
-    queryKey: ['dbsummary', db],
-    queryFn: () => api.dbSummary(db),
-    placeholderData: keepPreviousData,
-  })
-
-  // Carga ATÓMICA: esqueleto hasta que KPIs y tabla estén listos (solo primera carga).
+  // Carga ATÓMICA (§8/§12): sin dato previo → esqueleto. Con dato previo → se pinta atenuado
+  // y marcado "actualizando…" mientras cualquiera de las consultas dependientes está en vuelo
+  // (isFetching, no solo isLoading — así KPIs y filas revelan el nuevo valor juntos, nunca
+  // escalonados, aunque cada query resuelva en un instante distinto).
   const loading = q.isLoading || summary.isLoading || dbsQ.isLoading
+  const updating = q.isFetching || summary.isFetching || dbsQ.isFetching
   const rows = q.data?.rows ?? []
 
   const doExport = () => {
@@ -100,17 +121,22 @@ export function Tables() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <FreshnessSeal ageSeconds={ageFromAt(q.data?.at)} live={live} />
-          <RefreshButton onClick={refreshNow} busy={q.isFetching} />
+          <FreshnessSeal ageSeconds={ageFromAt(q.data?.at)} live={live} updating={updating} />
+          {/* En escritorio, alcanzar el botón arriba a la derecha es normal (ratón). En móvil/
+              tablet se oculta aquí y reaparece al alcance del pulgar, al pie del contenido
+              (DESIGN §9.2). */}
+          <div className="hidden lg:block">
+            <RefreshButton onClick={refreshNow} busy={updating} />
+          </div>
         </div>
       </div>
 
       {loading ? (
         <PageSkeleton kpis={3} />
       ) : (
-      <div className="reveal space-y-4">
+      <div className={`reveal space-y-4 transition-opacity duration-200 ${updating ? 'opacity-50' : ''}`}>
       {/* Dashboard de la base seleccionada */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label={db === '*' ? 'Tablas (todas)' : `Tablas · ${db}`}
           value={int(summary.data?.table_count)}
@@ -136,7 +162,7 @@ export function Tables() {
           <select
             value={db}
             onChange={(e) => setDb(e.target.value)}
-            className="rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
+            className="tap44 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
           >
             <option value="*">Todas</option>
             {dbsQ.data?.databases.map((d) => (
@@ -155,20 +181,87 @@ export function Tables() {
           placeholder="Tabla u owner…"
         />
         <ExportButton onClick={doExport} disabled={rows.length === 0} />
-        <label className="ml-auto flex cursor-pointer items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1">
+        {/* "Ordenar por" explícito en móvil (<640px, DESIGN §9.3): sin encabezados donde pulsar,
+            usa el mismo estado que el clic en el encabezado. */}
+        <label className="flex items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1 sm:hidden">
+          Ordenar por
+          <select
+            value={order}
+            onChange={(e) => setOrderCol(e.target.value)}
+            className="tap44 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label
+          className={`ml-auto hidden items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1 lg:flex ${
+            liveAllowed ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+          }`}
+          title={liveAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+        >
           <input
             type="checkbox"
             checked={live}
+            disabled={!liveAllowed}
             onChange={(e) => setLive(e.target.checked)}
-            className="accent-[var(--live)]"
+            className="tap44 accent-[var(--live)]"
           />
           Modo en vivo
         </label>
       </div>
 
-      {/* Tabla */}
-      <section className="panel overflow-x-auto">
-        <table className="w-full min-w-[680px]">
+      <BlockedHint show={detailBlocked} onDone={dismissBlocked} />
+
+      {/* Fichas (<640px, DESIGN §9.3): nunca scroll horizontal de 7 columnas con una mano. */}
+      <div className="space-y-2 sm:hidden">
+        {q.isError && (
+          <div className="panel px-4 py-8 text-center text-body text-crit">
+            {(q.error as Error).message}
+            <div className="mt-1 font-data text-micro text-ink2">
+              ¿Conectado a la VPN? Netezza solo responde desde la red interna.
+            </div>
+          </div>
+        )}
+        {!q.isError &&
+          rows.map((r) => (
+            <div
+              key={r.objid}
+              role="button"
+              tabIndex={0}
+              onClick={() => openDetail(r.objid, r.table)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') openDetail(r.objid, r.table)
+              }}
+              title={detailAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+              aria-disabled={!detailAllowed}
+              className={`tap44-row panel px-4 py-3 ${detailAllowed ? 'cursor-pointer active:bg-bg2' : 'cursor-not-allowed opacity-70'}`}
+            >
+              <div className="break-all font-data text-body text-ink0">{r.table}</div>
+              <div className="mt-0.5 truncate font-dense text-label text-ink2">
+                {r.db} · {r.schema} · {r.owner}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div>
+                  <div className="th">Espacio</div>
+                  <div className="num text-body text-ink0">{gb(r.space_gb)}</div>
+                </div>
+                <SkewBadge skew={r.skew} />
+              </div>
+            </div>
+          ))}
+        {!q.isError && !q.isLoading && rows.length === 0 && (
+          <div className="panel px-4 py-8 text-center text-body text-ink2">Sin resultados.</div>
+        )}
+      </div>
+
+      {/* Tabla (≥640px): completa desde 1024px; 640–1023px oculta columnas de menor prioridad
+          (§9.3), nunca encoge la letra. */}
+      <section className="panel hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[520px]">
           <thead>
             <tr className="border-b border-line-strong">
               {COLS.map((c) => (
@@ -177,7 +270,7 @@ export function Tables() {
                   onClick={() => setOrderCol(c.order)}
                   className={`th px-3 py-2 ${c.num ? 'text-right' : ''} ${
                     c.order ? 'cursor-pointer select-none hover:text-ink0' : ''
-                  } ${order === c.order ? 'text-ink0' : ''}`}
+                  } ${order === c.order ? 'text-ink0' : ''} ${c.priority > 4 ? 'hidden lg:table-cell' : ''}`}
                 >
                   {c.label}
                   {order === c.order && <span className="ml-1 text-live">▾</span>}
@@ -200,15 +293,16 @@ export function Tables() {
               rows.map((r) => (
                 <tr
                   key={r.objid}
-                  onClick={() =>
-                    navigate(`/tabla/${r.objid}?name=${encodeURIComponent(r.table ?? '')}`)
-                  }
-                  className="cursor-pointer border-b border-line last:border-0 hover:bg-bg2"
+                  onClick={() => openDetail(r.objid, r.table)}
+                  title={detailAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+                  aria-disabled={!detailAllowed}
+                  className={`tap44-row border-b border-line last:border-0 ${detailAllowed ? 'cursor-pointer hover:bg-bg2' : 'cursor-not-allowed opacity-70'}`}
                 >
                   <td className="px-3 py-1.5 font-data text-body text-ink0">{r.table}</td>
                   <td className="px-3 py-1.5 font-data text-body text-ink1">{r.db}</td>
-                  <td className="px-3 py-1.5 font-data text-body text-ink1">{r.owner}</td>
-                  <td className="px-3 py-1.5 font-data text-micro text-ink1">{r.distribute_on}</td>
+                  <td className="hidden px-3 py-1.5 font-data text-body text-ink1 lg:table-cell">{r.schema}</td>
+                  <td className="hidden px-3 py-1.5 font-data text-body text-ink1 lg:table-cell">{r.owner}</td>
+                  <td className="hidden px-3 py-1.5 font-data text-micro text-ink1 lg:table-cell">{r.distribute_on}</td>
                   <td className="num px-3 py-1.5 text-body text-ink0">{gb(r.space_gb)}</td>
                   <td className="px-3 py-1.5">
                     <SkewBadge skew={r.skew} />
@@ -231,7 +325,7 @@ export function Tables() {
         <button
           onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={page === 0 || q.isFetching}
-          className="rounded border border-line p-1 text-ink1 hover:bg-bg2 disabled:opacity-40"
+          className="tap44 flex items-center justify-center rounded border border-line text-ink1 hover:bg-bg2 disabled:opacity-40"
           aria-label="Anterior"
         >
           <ChevronLeft size={16} />
@@ -240,11 +334,32 @@ export function Tables() {
         <button
           onClick={() => setPage((p) => p + 1)}
           disabled={!q.data?.has_next || q.isFetching}
-          className="rounded border border-line p-1 text-ink1 hover:bg-bg2 disabled:opacity-40"
+          className="tap44 flex items-center justify-center rounded border border-line text-ink1 hover:bg-bg2 disabled:opacity-40"
           aria-label="Siguiente"
         >
           <ChevronRight size={16} />
         </button>
+      </div>
+
+      {/* Alcanzable con el pulgar en móvil/tablet (DESIGN §9.2): "Actualizar ahora" y "Modo en
+          vivo" repetidos al pie del contenido, no solo arriba a la derecha. */}
+      <div className="flex flex-wrap items-center justify-center gap-4 border-t border-line pt-4 lg:hidden">
+        <RefreshButton onClick={refreshNow} busy={updating} />
+        <label
+          className={`flex items-center gap-2 font-dense text-label uppercase tracking-wide text-ink1 ${
+            liveAllowed ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+          }`}
+          title={liveAllowed ? undefined : 'Tu rol no permite consultas en vivo'}
+        >
+          <input
+            type="checkbox"
+            checked={live}
+            disabled={!liveAllowed}
+            onChange={(e) => setLive(e.target.checked)}
+            className="tap44 accent-[var(--live)]"
+          />
+          Modo en vivo
+        </label>
       </div>
       </div>
       )}

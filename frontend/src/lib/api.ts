@@ -108,6 +108,40 @@ export interface OwnerRow {
   gb: number
 }
 
+// ─── Auth / usuarios ───
+export type Role = 'admin' | 'operador' | 'viewer'
+
+export interface AuthStatus {
+  authenticated: boolean
+  user: string | null
+  role: Role | null
+  must_change_password: boolean
+}
+
+export interface LoginResp {
+  token: string
+  user: string
+  role: Role
+  must_change_password: boolean
+}
+
+export interface MeResp {
+  id: number
+  username: string
+  role: Role
+  must_change_password: boolean
+}
+
+export interface AppUser {
+  id: number
+  username: string
+  role: Role
+  active: boolean
+  must_change_password: boolean
+  created_at: string
+  last_login_at: string | null
+}
+
 const TOKEN_KEY = 'nzm-token'
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const setToken = (t: string) => localStorage.setItem(TOKEN_KEY, t)
@@ -118,11 +152,34 @@ function authHeaders(): Record<string, string> {
   return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
-function on401(status: number) {
-  if (status === 401) {
+/** Rutas donde un 401 es una respuesta esperada del formulario, no una sesión caducada. */
+const NO_RELOGIN = ['/auth/login', '/auth/change-password']
+
+/** Evento global: sesión caducada a mitad de una acción. `SessionExpiredModal` lo escucha
+ * y avisa antes de recargar — nunca recargar en silencio (se perdería lo que se estaba
+ * tecleando sin explicación). */
+export const SESSION_EXPIRED_EVENT = 'nzm:session-expired'
+
+function on401(status: number, path: string) {
+  if (status === 401 && !NO_RELOGIN.some((p) => path.startsWith(p))) {
     clearToken()
-    location.reload() // fuerza la pantalla de login
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
   }
+}
+
+/** 403: no romper la vista — mensaje claro y llano en vez del detalle técnico del backend. */
+async function throwForStatus(res: Response, path: string): Promise<never> {
+  on401(res.status, path)
+  if (res.status === 403) {
+    throw new Error('No tienes permisos para esta acción')
+  }
+  let detail = res.statusText
+  try {
+    detail = (await res.json()).detail ?? detail
+  } catch {
+    /* respuesta no-JSON */
+  }
+  throw new Error(`${res.status} · ${detail}`)
 }
 
 async function get<T>(path: string, params?: Record<string, string | number | boolean>): Promise<T> {
@@ -134,16 +191,7 @@ async function get<T>(path: string, params?: Record<string, string | number | bo
         .join('&')
     : ''
   const res = await fetch(`/api${path}${qs}`, { headers: authHeaders() })
-  if (!res.ok) {
-    on401(res.status)
-    let detail = res.statusText
-    try {
-      detail = (await res.json()).detail ?? detail
-    } catch {
-      /* respuesta no-JSON */
-    }
-    throw new Error(`${res.status} · ${detail}`)
-  }
+  if (!res.ok) return throwForStatus(res, path)
   return res.json() as Promise<T>
 }
 
@@ -153,30 +201,8 @@ async function mutate<T>(method: string, path: string, body?: unknown): Promise<
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) {
-    on401(res.status)
-    let detail = res.statusText
-    try {
-      detail = (await res.json()).detail ?? detail
-    } catch {
-      /* respuesta no-JSON */
-    }
-    throw new Error(`${res.status} · ${detail}`)
-  }
+  if (!res.ok) return throwForStatus(res, path)
   return res.json() as Promise<T>
-}
-
-export interface TelegramCfg {
-  configured: boolean
-  chat_id: string
-  has_token: boolean
-}
-
-export interface AiCfg {
-  enabled: boolean
-  model: string
-  has_key: boolean
-  assistant: boolean
 }
 
 export interface SftpCfg {
@@ -190,23 +216,20 @@ export interface SftpCfg {
 }
 
 export const api = {
-  authStatus: () => get<{ configured: boolean; authenticated: boolean }>('/auth/status'),
+  authStatus: () => get<AuthStatus>('/auth/status'),
   login: (username: string, password: string) =>
-    mutate<{ token: string; user: string }>('POST', '/auth/login', { username, password }),
-  getAuth: () => get<{ configured: boolean; user: string }>('/settings/auth'),
-  saveAuth: (b: { username?: string; password?: string; disable?: boolean }) =>
-    mutate<{ configured: boolean; user: string }>('PUT', '/settings/auth', b),
+    mutate<LoginResp>('POST', '/auth/login', { username, password }),
+  me: () => get<MeResp>('/auth/me'),
+  changePassword: (current_password: string, new_password: string) =>
+    mutate<{ ok: true }>('POST', '/auth/change-password', { current_password, new_password }),
+  // ─── Usuarios (solo admin) ───
+  users: () => get<{ users: AppUser[] }>('/users'),
+  createUser: (b: { username: string; password: string; role: Role }) =>
+    mutate<AppUser>('POST', '/users', b),
+  updateUser: (id: number, b: { role?: Role; active?: boolean; password?: string }) =>
+    mutate<AppUser>('PATCH', `/users/${id}`, b),
+  deleteUser: (id: number) => mutate<{ ok: true }>('DELETE', `/users/${id}`),
   databases: () => get<{ databases: string[]; default: string }>('/databases'),
-  getTelegram: () => get<TelegramCfg>('/settings/telegram'),
-  saveTelegram: (b: { bot_token?: string; chat_id?: string }) =>
-    mutate<TelegramCfg>('PUT', '/settings/telegram', b),
-  testTelegram: () => mutate<{ ok: boolean }>('POST', '/settings/telegram/test'),
-  getAi: () => get<AiCfg>('/settings/ai'),
-  saveAi: (b: { api_key?: string; model?: string; enabled?: boolean; assistant?: boolean }) =>
-    mutate<AiCfg>('PUT', '/settings/ai', b),
-  testAi: () => mutate<{ ok: boolean; sample: string | null }>('POST', '/settings/ai/test'),
-  aiChat: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
-    mutate<{ answer: string | null; error?: string }>('POST', '/ai/chat', { messages }),
   // ─── SFTP ───
   sftpDisk: (path: string) =>
     get<{ path: string; filesystem?: string; size?: string; used?: string; available?: string;
@@ -233,9 +256,6 @@ export const api = {
     get<{ rows: OwnerRow[]; database: string | null } & Freshness>('/owners', { db, fresh }),
   tables: (p: { db: string; order: string; page: number; fresh?: boolean; q?: string }) =>
     get<TablesResp>('/tables', { db: p.db, order: p.order, page: p.page, fresh: p.fresh ?? false, q: p.q ?? '' }),
-  searchCode: (q: string, db: string) =>
-    get<{ rows: { db: string; procedure: string; line: number; snippet: string }[]; q: string; truncated: boolean }>(
-      '/search/code', { q, db }),
   tableDetail: (objid: number, table: string) =>
     get<TableDetailResp>('/table', { objid, table }),
   tableSlices: (objid: number) =>
@@ -245,8 +265,8 @@ export const api = {
       '/dataslice/tables',
       { ds: p.ds, page: p.page, fresh: p.fresh ?? false, order: p.order ?? 'ds' },
     ),
-  datasliceSummary: (ds: number) =>
-    get<{ total: number; skewed: number; ds: number } & Freshness>('/dataslice/summary', { ds }),
+  datasliceSummary: (ds: number, fresh = false) =>
+    get<{ total: number; skewed: number; ds: number } & Freshness>('/dataslice/summary', { ds, fresh }),
   monitoringSpace: () => get<Snapshot<SpaceByDb>>('/monitoring/space'),
   monitoringHealth: () => get<Snapshot<unknown>>('/monitoring/health'),
   monitoringAlerts: () => get<Snapshot<AlertsData>>('/monitoring/alerts'),

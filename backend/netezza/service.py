@@ -86,11 +86,11 @@ def db_summary(db: str | None, fresh: bool = False):
     db = safe_db(db)
 
     def produce():
-        ov = run(q.overview(db))[0]
-        sk = run(q.skewed_count(db))[0]
-        return {"table_count": int(ov["table_count"] or 0),
-                "total_gb": float(ov["total_gb"] or 0),
-                "skewed": int(sk["n"] or 0)}
+        # UNA consulta: el contador de skew sale del mismo escaneo del catálogo (ver q.db_summary)
+        r = run(q.db_summary(db))[0]
+        return {"table_count": int(r["table_count"] or 0),
+                "total_gb": float(r["total_gb"] or 0),
+                "skewed": int(r["skewed"] or 0)}
 
     val, at, cached = _cached(("dbsum", db), S.tables_ttl, produce, fresh)
     return {**val, "database": db, "at": at, "from_cache": cached}
@@ -101,6 +101,45 @@ def space_by_db() -> list[dict]:
     rows = run(q.SQL_SPACE_BY_DB)
     return [{"db": r["dbname"], "table_count": int(r["table_count"] or 0), "gb": float(r["gb"] or 0)}
             for r in rows]
+
+
+def _try_run(sql: str) -> list[dict] | None:
+    """Ejecuta devolviendo None si falla: una base inaccesible degrada, no tumba la página."""
+    try:
+        return run(sql)
+    except Exception:
+        return None
+
+
+def _apply_dist(norm: list[dict], rows: list[dict]) -> None:
+    dm = {int(r["objid"]): (r["dist"] or "").strip().strip(",").strip() or "RANDOM" for r in rows}
+    for n in norm:
+        n["distribute_on"] = dm.get(n["objid"], "RANDOM")
+
+
+def _fill_dist(norm: list[dict]) -> None:
+    """Resuelve la distribución de una página que mezcla bases con UNA sola consulta.
+
+    Antes salía una consulta por base distinta de la página (N+1: 7 bases = 7 consultas, 2.08 s).
+    `q.dist_for_page` las une en un `UNION ALL`. Si esa consulta falla (p. ej. una base sin
+    permiso tumba todo el UNION), se cae al camino por base para no perder la distribución de
+    las demás; si tampoco, la fila se queda en 'RANDOM' como antes.
+    """
+    by_db: dict[str, list[int]] = defaultdict(list)
+    for n in norm:
+        if n["db"] and n["objid"]:
+            by_db[n["db"]].append(n["objid"])
+    sql = q.dist_for_page(by_db)
+    if not sql:
+        return
+    rows = _try_run(sql)
+    if rows is not None:
+        _apply_dist(norm, rows)
+        return
+    for dbn, ids in by_db.items():  # fallback: por base, solo si el UNION falló
+        rows = _try_run(q.dist_for_ids(dbn, ",".join(str(i) for i in ids)))
+        if rows is not None:
+            _apply_dist([n for n in norm if n["db"] == dbn], rows)
 
 
 def tables(db: str | None, order: str, page: int, fresh: bool = False, search: str | None = None):
@@ -119,22 +158,8 @@ def tables(db: str | None, order: str, page: int, fresh: bool = False, search: s
                  "owner": r.get("owner"), "objid": int(r.get("objid") or 0),
                  "distribute_on": (r.get("distribute_on") or "RANDOM").strip().strip(",").strip() or "RANDOM",
                  "space_gb": float(r.get("gb") or 0), "skew": float(r.get("skew") or 0)} for r in rows]
-        if db is None and norm:  # 2ª pasada de distribución por base (todas las bases)
-            bydb = defaultdict(list)
-            for n in norm:
-                bydb[n["db"]].append(n["objid"])
-            for dbn, ids in bydb.items():
-                idlist = ",".join(str(i) for i in ids if i)
-                if not idlist:
-                    continue
-                try:
-                    dm = {int(r["objid"]): (r["dist"] or "").strip().strip(",").strip() or "RANDOM"
-                          for r in run(q.dist_for_ids(dbn, idlist))}
-                    for n in norm:
-                        if n["db"] == dbn:
-                            n["distribute_on"] = dm.get(n["objid"], "RANDOM")
-                except Exception:
-                    pass
+        if db is None and norm:  # 2ª pasada de distribución (todas las bases) — UNA consulta
+            _fill_dist(norm)
         return {"rows": norm, "has_next": has_next}
 
     val, at, cached = _cached(key, S.tables_ttl, produce, fresh)
@@ -171,7 +196,9 @@ def _references_table(sql: str, table_upper: str, db_upper: str | None) -> bool:
 
 
 def table_detail(objid: int, table: str):
-    out: dict = {"objid": objid, "table": table}
+    # `at`/`from_cache` van en TODA vista de investigación: es con lo que el frontend pinta el
+    # sello de frescura y el estado "actualizando…" (AGENTS §2.1). Aquí siempre es en vivo.
+    out: dict = {"objid": objid, "table": table, "at": time.time(), "from_cache": False}
     try:
         m = run(q.table_meta(objid))
         if m:  # nzpy devuelve NUMERIC como str → castear gb/skew a float
@@ -214,35 +241,8 @@ def table_slices(objid: int):
     rows = run(q.table_slices(objid))
     occ = run(q.table_slices_occupied(objid))
     return {"slices": [{"ds": int(r["dsid"]), "gb": float(r["gb"])} for r in rows],
-            "occupied": int(occ[0]["n"] or 0) if occ else len(rows)}
-
-
-def search_code(text: str, db: str | None = None, limit: int = 200):
-    """Busca texto en el código de los stored procedures (cross-DB). Línea + snippet por match."""
-    text = (text or "").strip()
-    if len(text) < 2:
-        return {"rows": [], "q": text, "truncated": False}
-    db = safe_db(db)
-    parts = [p for p in text.split() if p][:12]
-    # whitespace-agnóstico; comillas escapadas para el LIKE
-    like = "%".join(p.replace("'", "''").upper() for p in parts)
-    rx = re.compile(r"\s+".join(re.escape(p) for p in parts), re.IGNORECASE)
-    dbs = [db] if db else databases()
-    rows: list[dict] = []
-    for d in dbs:
-        try:
-            procs = run(q.procedures_matching(d, like))
-        except Exception:  # noqa: BLE001, S112 — una base sin permiso no rompe la búsqueda
-            continue
-        for p in procs:
-            src = p.get("source") or ""
-            for i, line in enumerate(src.split("\n")):
-                if rx.search(line):
-                    rows.append({"db": d, "procedure": p.get("name"),
-                                 "line": i + 1, "snippet": line.strip()[:300]})
-                    if len(rows) >= limit:
-                        return {"rows": rows, "q": text, "truncated": True}
-    return {"rows": rows, "q": text, "truncated": False}
+            "occupied": int(occ[0]["n"] or 0) if occ else len(rows),
+            "at": time.time(), "from_cache": False}  # sello de frescura (AGENTS §2.1)
 
 
 def tables_on_dataslice(dsid: int, page: int = 0, fresh: bool = False, order: str = "ds"):

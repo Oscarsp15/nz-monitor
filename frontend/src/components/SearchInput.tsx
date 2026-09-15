@@ -20,12 +20,12 @@ export function SearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-48 rounded border border-line bg-bg1 py-1 pl-7 pr-7 font-data text-body text-ink0 placeholder:text-ink2"
+        className="tap44 w-48 rounded border border-line bg-bg1 py-1 pl-7 pr-7 font-data text-body text-ink0 placeholder:text-ink2"
       />
       {value && (
         <button
           onClick={() => onChange('')}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-ink2 hover:text-ink0"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-ink2 hover:text-ink0"
           aria-label="Limpiar"
         >
           <X size={13} />
@@ -41,7 +41,7 @@ export function ExportButton({ onClick, disabled = false }: { onClick: () => voi
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1.5 rounded border border-line px-2.5 py-1 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+      className="tap44 inline-flex items-center justify-center gap-1.5 rounded border border-line px-2.5 py-1 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
     >
       Excel
     </button>

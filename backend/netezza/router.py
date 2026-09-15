@@ -1,16 +1,24 @@
 """Endpoints de observabilidad de Netezza (router fino; la lógica vive en service.py).
 
 `fresh=true` = botón "Actualizar ahora": salta la caché y consulta Netezza en vivo (AGENTS §2/§8).
-TODO(prod): proteger con auth (Depends get_current_user) — ver AGENTS.md §9.
+Auth: el router se monta con `deny_live_for_viewer` en `main.py` → exige sesión y, si el rol es
+`viewer`, rechaza `fresh=true`/`live=true` con 403 (AGENTS §9). Esa guardia mira el query string,
+así que un endpoint **sin** `fresh` que consulte Netezza siempre (`/api/table*`) declara además
+`require_role("operador")`; si no, un `viewer` lo llamaría sin que nadie lo mire.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from auth.deps import require_role
 from config import get_settings
 
 from . import service
 
 router = APIRouter(prefix="/api", tags=["netezza"])
 S = get_settings()
+
+#: Endpoints que consultan Netezza SIEMPRE (no tienen `fresh`, así que `deny_live_for_viewer` ni
+#: los mira). Son consulta en vivo por definición → operador+ (AGENTS §9).
+_SIEMPRE_EN_VIVO = [Depends(require_role("operador"))]
 
 
 @router.get("/databases")
@@ -44,17 +52,14 @@ def tables(db: str | None = None, order: str = "space", page: int = 0,
     return service.tables(db, order, page, fresh, q)
 
 
-@router.get("/search/code")
-def search_code(q: str, db: str | None = None):
-    return service.search_code(q, db)
-
-
-@router.get("/table")
+@router.get("/table", dependencies=_SIEMPRE_EN_VIVO)
 def table_detail(objid: int, table: str):
+    """Detalle de una tabla: 4 consultas reales, una de ellas `table_history` (LIKE sobre
+    NZ_QUERY_HISTORY, la más cara de la app). Sin caché → operador+, nunca `viewer`."""
     return service.table_detail(objid, table)
 
 
-@router.get("/table/slices")
+@router.get("/table/slices", dependencies=_SIEMPRE_EN_VIVO)
 def table_slices(objid: int):
     return service.table_slices(objid)
 

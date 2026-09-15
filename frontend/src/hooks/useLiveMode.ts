@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { useAuth } from '../lib/auth'
+
 /**
  * "Modo en vivo" acotado por-vista (AGENTS §2.3, §8): refresca SOLO esta vista cada
  * `intervalMs` mientras está activo Y la pestaña visible. Off por defecto. Nunca es global.
+ * `viewer` no puede activarlo (mismo límite que "Actualizar ahora" — ver RefreshButton).
  */
 export function useLiveMode(onTick: () => void, intervalMs = 20_000) {
-  const [live, setLive] = useState(false)
+  const { isOperador } = useAuth()
+  const [liveState, setLiveState] = useState(false)
+  const live = liveState && isOperador
   const cb = useRef(onTick)
   cb.current = onTick
+
+  const setLive = (v: boolean) => {
+    if (!isOperador) return // viewer: sin consultas en vivo
+    setLiveState(v)
+  }
 
   useEffect(() => {
     if (!live) return
@@ -30,5 +40,5 @@ export function useLiveMode(onTick: () => void, intervalMs = 20_000) {
     }
   }, [live, intervalMs])
 
-  return { live, setLive }
+  return { live, setLive, allowed: isOperador }
 }

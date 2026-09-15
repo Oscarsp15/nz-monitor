@@ -16,7 +16,7 @@ function Row({ a, onClick }: { a: AlertItem; onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-0 ${
+      className={`tap44-row flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-0 ${
         onClick ? 'cursor-pointer hover:bg-bg2' : ''
       }`}
       style={{ borderLeft: `2px solid ${c}` }}
@@ -58,7 +58,7 @@ export function Alerts() {
         <PageSkeleton kpis={3} panels={2} />
       ) : (
       <div className="reveal space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Críticas" value={String(crit)} />
         <KpiCard label="En atención" value={String(warn)} />
         <KpiCard
