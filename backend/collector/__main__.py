@@ -8,7 +8,7 @@ import logging
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from auth.bootstrap import bootstrap_users  # sin pasar por auth/__init__ (no arrastra FastAPI)
-from config import get_settings
+from config import check_secret_key, get_settings
 from store import init_db
 
 from . import jobs
@@ -19,6 +19,7 @@ log = logging.getLogger("collector")
 
 def main() -> None:
     s = get_settings()
+    check_secret_key(s)
     if s.app_role != "collector":
         log.warning("APP_ROLE=%r (esperado 'collector'); arranco el recolector igual.", s.app_role)
 

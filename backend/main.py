@@ -11,10 +11,15 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from auth import bootstrap_users, deny_live_for_viewer, deny_password_pending
+from auth import (
+    bootstrap_users,
+    deny_live_for_viewer,
+    deny_password_pending,
+    deny_password_pending_stream,
+)
 from auth.deps import require_auth_stream
 from auth.router import router as auth_router
-from config import get_settings
+from config import check_secret_key, get_settings
 from monitoring.router import router as monitoring_router
 from netezza.router import router as netezza_router
 from settings.router import router as settings_router
@@ -27,6 +32,7 @@ S = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    check_secret_key(S)  # sin clave propia, cualquiera firma un token de admin
     init_db()  # asegura la tabla de snapshots (compartida con el recolector)
     bootstrap_users()  # migra el login antiguo y siembra el admin inicial (auth/bootstrap.py)
     yield
@@ -62,7 +68,7 @@ def health():
 _STREAM_METRICS = ("health", "space_overview", "alerts")
 
 
-@app.get("/api/stream", dependencies=[Depends(require_auth_stream), Depends(deny_password_pending)])
+@app.get("/api/stream", dependencies=[Depends(deny_password_pending_stream)])
 async def stream():
     """SSE: empuja un evento al cambiar un snapshot (la API vigila SQLite).
 

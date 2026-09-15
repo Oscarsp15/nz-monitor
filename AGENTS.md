@@ -157,6 +157,11 @@ Principios derivados:
 ## 9. Seguridad
 
 - Credenciales **cifradas en reposo** (`encrypt_value`/`decrypt_value`). **Nunca** loguear secretos.
+- **`SECRET_KEY` propia, obligatoria.** Firma los JWT y deriva el cifrado de los secretos guardados.
+  El default del código es público: con él se forja un token de administrador sin credenciales, así
+  que `check_secret_key()` **aborta el arranque** (API y recolector) si sigue puesto. Los `.env` se
+  resuelven por **ruta absoluta** (raíz y `backend/`, gana el segundo): con rutas relativas, lanzar
+  el proceso desde otro directorio leía otro archivo y la clave puesta se ignoraba en silencio.
 - **Login SIEMPRE obligatorio.** No existe "modo abierto": todo endpoint (salvo `/health` y
   `/api/auth/status|login`) exige un JWT válido de un usuario **existente y activo** → si no, 401.
   Las dependencias viven en `backend/auth/deps.py` (`require_auth`, `require_role`,

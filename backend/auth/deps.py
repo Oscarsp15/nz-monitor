@@ -82,6 +82,7 @@ def require_auth_stream(
 
 #: usuario autenticado, listo para inyectar en un endpoint (`user: AuthUser`)
 AuthUser = Annotated[CurrentUser, Depends(require_auth)]
+StreamUser = Annotated[CurrentUser, Depends(require_auth_stream)]
 #: sesión opcional (solo `/api/auth/status`)
 MaybeUser = Annotated[CurrentUser | None, Depends(optional_user)]
 
@@ -100,7 +101,7 @@ def require_role(min_role: Role) -> Callable[[CurrentUser], CurrentUser]:
     return _dep
 
 
-def deny_password_pending(user: AuthUser) -> CurrentUser:
+def _check_password_pending(user: CurrentUser) -> CurrentUser:
     """Mientras el usuario deba cambiar su contrasena, solo puede usar `/api/auth/*`.
 
     La pantalla forzada del frontend es comodidad, no seguridad: sin esto, quien conoce la
@@ -113,6 +114,19 @@ def deny_password_pending(user: AuthUser) -> CurrentUser:
             "Debes cambiar tu contrasena antes de usar la aplicacion.",
         )
     return user
+
+
+def deny_password_pending(user: AuthUser) -> CurrentUser:
+    return _check_password_pending(user)
+
+
+def deny_password_pending_stream(user: StreamUser) -> CurrentUser:
+    """Igual, para `/api/stream`: el token puede venir por `?token=` (EventSource).
+
+    Si esta guardia dependiera de `require_auth` (solo cabecera), FastAPI resolvería esa
+    dependencia por su cuenta y devolvería 401 aunque el token viajara por la query.
+    """
+    return _check_password_pending(user)
 
 
 def deny_live_for_viewer(request: Request, user: AuthUser) -> CurrentUser:

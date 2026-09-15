@@ -21,6 +21,7 @@ def tmp_db(tmp_path, monkeypatch):
 
     db = tmp_path / "test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db}")
+    monkeypatch.setenv("SECRET_KEY", "clave-de-pruebas-no-usar-en-produccion")
     monkeypatch.setenv("ADMIN_USER", ADMIN_USER)
     monkeypatch.setenv("ADMIN_PASSWORD", ADMIN_PASSWORD)
     get_settings.cache_clear()
