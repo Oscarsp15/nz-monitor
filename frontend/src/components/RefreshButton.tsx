@@ -18,7 +18,8 @@ export function RefreshButton({
       onClick={blocked ? undefined : onClick}
       disabled={busy || blocked}
       title={blocked ? 'Tu rol no permite consultas en vivo' : undefined}
-      className="inline-flex items-center gap-1.5 rounded border border-line px-2.5 py-1 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+      aria-label={blocked ? 'Actualizar ahora — tu rol no permite consultas en vivo' : 'Actualizar ahora'}
+      className="tap44 inline-flex items-center justify-center gap-1.5 rounded border border-line px-2.5 py-1 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
     >
       <RotateCw size={13} strokeWidth={1.5} className={busy ? 'animate-spin' : ''} />
       Actualizar ahora

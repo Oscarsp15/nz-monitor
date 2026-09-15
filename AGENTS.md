@@ -50,6 +50,11 @@ Principios derivados:
    y dispara siempre la consulta real; al llegar, reemplaza y sella la frescura.** Si no hay valor
    previo, esqueleto con el mismo mensaje. Prohibido: mostrar el valor viejo sin marcarlo, o no
    lanzar la consulta.
+   **Contrato de backend:** toda vista de investigación (`/api/overview`, `/api/db_summary`,
+   `/api/tables`, `/api/owners`, `/api/dataslices`, `/api/dataslice/*`, `/api/table`,
+   `/api/table/slices`) devuelve **siempre `at`** (marca de tiempo del dato) **y `from_cache`**.
+   Sin eso el frontend no puede sellar la frescura ni marcar "actualizando…". Un endpoint de
+   investigación nuevo que no los devuelva está incompleto.
 2. **Botón "Actualizar ahora"** (force-refresh que salta cualquier caché) en toda vista de análisis.
 3. **"Modo en vivo" acotado**: toggle por-vista (off por defecto) que refresca *solo esa vista*
    cada 15–30 s mientras el usuario la mira (p. ej. ver bajar el espacio durante un purge).
@@ -133,6 +138,11 @@ Principios derivados:
 | **Espacio de UNA BD (depurando)** | **en vivo con revalidación visible** (§2.1) | on-demand |
 | **Skew/distribución de UNA tabla** | **en vivo con revalidación visible** (§2.1) | on-demand |
 | Esquema / lineage / explorer | caché fuerte en SQLite | invalidar en deploy o manual |
+
+**Un snapshot viejo NO es un dato bueno.** Los endpoints pasivos degradan `ok → stale` cuando la
+edad del snapshot supera **3× el intervalo del recolector de esa métrica** (el de arriba). Con el
+recolector parado, antes se servía un dato de 11 h como `"ok"` — justo lo que prohíbe §2.
+La respuesta lleva `age_seconds` y `stale_after_seconds`; un `error` real nunca se tapa con `stale`.
 
 ---
 

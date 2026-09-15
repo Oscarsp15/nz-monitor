@@ -29,9 +29,11 @@ export default {
         pill: '999px',
       },
       fontSize: {
-        micro: '0.6875rem',
+        // micro/body vienen de variables CSS: 11px/13px solo desde 1024px (DESIGN §9.4);
+        // por debajo, 12px/14px — ver :root en index.css.
+        micro: 'var(--fs-micro)',
         label: '0.75rem',
-        body: '0.8125rem',
+        body: 'var(--fs-body)',
         kpi: '1.75rem',
         'kpi-lg': '2.25rem',
       },

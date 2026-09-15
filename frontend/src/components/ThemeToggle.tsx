@@ -7,7 +7,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="rounded p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0"
+      className="tap44 flex items-center justify-center rounded p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0"
       title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
       aria-label="Cambiar tema"
     >

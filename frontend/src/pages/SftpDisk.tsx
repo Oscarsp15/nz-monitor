@@ -65,7 +65,7 @@ export function SftpDisk() {
       ) : disk.data?.error ? (
         <div className="panel px-4 py-6 text-center text-body text-warn">{disk.data.error}</div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Tamaño" value={disk.data?.size ?? '—'} loading={disk.isLoading} />
           <KpiCard label="Usado" value={disk.data?.used ?? '—'} loading={disk.isLoading} />
           <KpiCard label="Disponible" value={disk.data?.available ?? '—'} loading={disk.isLoading} />

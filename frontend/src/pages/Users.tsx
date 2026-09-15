@@ -31,12 +31,27 @@ export function Users() {
   const q = useQuery({ queryKey: ['users'], queryFn: api.users })
 
   const [errMsg, setErrMsg] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<number | null>(null)
+  // Conjunto de ids en vuelo, no un único id compartido: si no, una segunda acción borra el
+  // indicador de la primera y permite re-click mientras la primera sigue en curso.
+  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set())
+  const addPending = (id: number) => setPendingIds((s) => new Set(s).add(id))
+  const removePending = (id: number) =>
+    setPendingIds((s) => {
+      const next = new Set(s)
+      next.delete(id)
+      return next
+    })
 
   const [showCreate, setShowCreate] = useState(false)
   const [cUser, setCUser] = useState('')
   const [cPass, setCPass] = useState('')
   const [cRole, setCRole] = useState<Role>('viewer')
+
+  // Usuario para el que se está mostrando el formulario de reseteo de contraseña (fila).
+  const [resetUser, setResetUser] = useState<AppUser | null>(null)
+  const [resetPass, setResetPass] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const resetMismatch = resetConfirm.length > 0 && resetPass !== resetConfirm
 
   const createUser = useMutation({
     mutationFn: () => api.createUser({ username: cUser, password: cPass, role: cRole }),
@@ -55,23 +70,23 @@ export function Users() {
     mutationFn: ({ id, body }: { id: number; body: { role?: Role; active?: boolean; password?: string } }) =>
       api.updateUser(id, body),
     onMutate: ({ id }) => {
-      setPendingId(id)
+      addPending(id)
       setErrMsg(null)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
     onError: (e) => setErrMsg((e as Error).message),
-    onSettled: () => setPendingId(null),
+    onSettled: (_d, _e, { id }) => removePending(id),
   })
 
   const removeUser = useMutation({
     mutationFn: (id: number) => api.deleteUser(id),
     onMutate: (id) => {
-      setPendingId(id)
+      addPending(id)
       setErrMsg(null)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
     onError: (e) => setErrMsg((e as Error).message),
-    onSettled: () => setPendingId(null),
+    onSettled: (_d, _e, id) => removePending(id),
   })
 
   const rows = q.data?.users ?? []
@@ -89,11 +104,19 @@ export function Users() {
     patchUser.mutate({ id: u.id, body: { active: next } })
   }
 
-  const handleResetPassword = (u: AppUser) => {
-    const pw = window.prompt(`Nueva contraseña para "${u.username}":`)
-    if (!pw) return
-    if (!window.confirm(`¿Confirmas restablecer la contraseña de "${u.username}"?`)) return
-    patchUser.mutate({ id: u.id, body: { password: pw } })
+  const openResetPassword = (u: AppUser) => {
+    setResetUser(u)
+    setResetPass('')
+    setResetConfirm('')
+    setErrMsg(null)
+  }
+  const closeResetPassword = () => setResetUser(null)
+  const submitResetPassword = () => {
+    if (!resetUser || !resetPass || resetMismatch) return
+    patchUser.mutate(
+      { id: resetUser.id, body: { password: resetPass } },
+      { onSuccess: closeResetPassword },
+    )
   }
 
   const handleDelete = (u: AppUser) => {
@@ -113,7 +136,7 @@ export function Users() {
             setShowCreate((v) => !v)
             setErrMsg(null)
           }}
-          className="inline-flex items-center gap-1.5 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line"
+          className="tap44 inline-flex items-center justify-center gap-1.5 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line"
         >
           {showCreate ? <X size={14} strokeWidth={1.5} /> : <Plus size={14} strokeWidth={1.5} />}
           {showCreate ? 'Cancelar' : 'Nuevo usuario'}
@@ -124,7 +147,7 @@ export function Users() {
         <PageSkeleton kpis={3} panels={showCreate ? 2 : 1} />
       ) : (
         <div className="reveal space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard label="Usuarios" value={int(rows.length)} />
             <KpiCard label="Activos" value={int(rows.filter((u) => u.active).length)} />
             <KpiCard label="Administradores" value={int(rows.filter((u) => u.role === 'admin').length)} />
@@ -148,7 +171,7 @@ export function Users() {
                     value={cUser}
                     onChange={(e) => setCUser(e.target.value)}
                     autoFocus
-                    className="w-40 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
+                    className="tap44 w-40 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -157,7 +180,7 @@ export function Users() {
                     type="password"
                     value={cPass}
                     onChange={(e) => setCPass(e.target.value)}
-                    className="w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
+                    className="tap44 w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -165,7 +188,7 @@ export function Users() {
                   <select
                     value={cRole}
                     onChange={(e) => setCRole(e.target.value as Role)}
-                    className="rounded border border-line bg-bg1 px-2 py-1.5 font-data text-body text-ink0"
+                    className="tap44 rounded border border-line bg-bg1 px-2 py-1.5 font-data text-body text-ink0"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
@@ -177,7 +200,7 @@ export function Users() {
                 <button
                   type="submit"
                   disabled={!canCreate}
-                  className="rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+                  className="tap44 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
                 >
                   {createUser.isPending ? 'Creando…' : 'Crear'}
                 </button>
@@ -223,8 +246,7 @@ export function Users() {
                 {!q.isError &&
                   rows.map((u) => {
                     const isSelf = u.username === currentUser
-                    const busy = patchUser.isPending || removeUser.isPending
-                    const rowBusy = busy && pendingId === u.id
+                    const rowBusy = pendingIds.has(u.id)
                     return (
                       <tr key={u.id} className="border-b border-line last:border-0 hover:bg-bg2">
                         <td className="px-3 py-1.5">
@@ -241,7 +263,7 @@ export function Users() {
                             value={u.role}
                             disabled={rowBusy}
                             onChange={(e) => handleRoleChange(u, e.target.value as Role)}
-                            className="rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0 disabled:opacity-50"
+                            className="tap44 rounded border border-line bg-bg1 px-2 py-1 font-data text-body text-ink0 disabled:opacity-50"
                           >
                             {ROLES.map((r) => (
                               <option key={r} value={r}>
@@ -256,12 +278,13 @@ export function Users() {
                         <td className="px-3 py-1.5 font-data text-micro text-ink1">{dt(u.created_at)}</td>
                         <td className="px-3 py-1.5 font-data text-micro text-ink1">{dt(u.last_login_at)}</td>
                         <td className="px-3 py-1.5">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => handleResetPassword(u)}
+                              onClick={() => openResetPassword(u)}
                               disabled={rowBusy}
                               title="Resetear contraseña"
-                              className="rounded border border-line p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+                              aria-label={`Resetear contraseña de ${u.username}`}
+                              className="tap44 flex items-center justify-center rounded border border-line text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
                             >
                               <KeyRound size={14} strokeWidth={1.5} />
                             </button>
@@ -275,15 +298,23 @@ export function Users() {
                                     ? 'Desactivar'
                                     : 'Activar'
                               }
-                              className="rounded border border-line p-1.5 text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+                              aria-label={
+                                isSelf ? 'No puedes desactivar tu propia cuenta' : u.active ? `Desactivar a ${u.username}` : `Activar a ${u.username}`
+                              }
+                              className="tap44 flex items-center justify-center rounded border border-line text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
                             >
                               <Power size={14} strokeWidth={1.5} />
                             </button>
+                            {/* Destructivo separado del resto (DESIGN §9.2): no debe quedar al
+                                alcance accidental del pulgar — más aparte + su propia confirmación
+                                (handleDelete ya pide window.confirm). */}
                             <button
                               onClick={() => handleDelete(u)}
                               disabled={rowBusy || isSelf}
                               title={isSelf ? 'No puedes eliminar tu propia cuenta' : 'Eliminar'}
-                              className="rounded border border-line p-1.5 text-crit hover:bg-bg2 disabled:opacity-50"
+                              aria-label={isSelf ? 'No puedes eliminar tu propia cuenta' : `Eliminar a ${u.username}`}
+                              className="tap44 ml-1 flex items-center justify-center rounded border border-line pl-2 text-crit hover:bg-bg2 disabled:opacity-50"
+                              style={{ borderLeftColor: 'color-mix(in srgb, var(--crit) 40%, var(--line))' }}
                             >
                               <Trash2 size={14} strokeWidth={1.5} />
                             </button>
@@ -302,6 +333,66 @@ export function Users() {
               </tbody>
             </table>
           </section>
+        </div>
+      )}
+
+      {resetUser && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              submitResetPassword()
+            }}
+            className="panel w-full max-w-sm space-y-4 p-6"
+          >
+            <div>
+              <h2 className="th">Resetear contraseña</h2>
+              <p className="mt-1 text-body text-ink0">
+                Nueva contraseña temporal para <span className="text-ink0">{resetUser.username}</span>
+              </p>
+            </div>
+            <label className="block">
+              <span className="th">Contraseña nueva</span>
+              <input
+                type="password"
+                value={resetPass}
+                onChange={(e) => setResetPass(e.target.value)}
+                autoFocus
+                className="tap44 mt-1 w-full rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
+              />
+            </label>
+            <label className="block">
+              <span className="th">Repite la contraseña</span>
+              <input
+                type="password"
+                value={resetConfirm}
+                onChange={(e) => setResetConfirm(e.target.value)}
+                className="tap44 mt-1 w-full rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
+              />
+              {resetMismatch && (
+                <span className="mt-1 block font-data text-micro text-crit">Las contraseñas no coinciden.</span>
+              )}
+            </label>
+            <p className="font-data text-micro text-ink2">
+              Pedirá cambiarla en el próximo inicio de sesión.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={!resetPass || resetMismatch || patchUser.isPending}
+                className="tap44 flex-1 rounded border border-line bg-bg2 py-2 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+              >
+                {patchUser.isPending ? 'Guardando…' : 'Restablecer'}
+              </button>
+              <button
+                type="button"
+                onClick={closeResetPassword}
+                className="tap44 rounded border border-line px-4 py-2 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

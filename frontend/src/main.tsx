@@ -13,6 +13,7 @@ import { createRoot } from 'react-dom/client'
 
 import { App } from './App'
 import { AuthGate } from './components/AuthGate'
+import { SessionExpiredModal } from './components/SessionExpiredModal'
 import { AuthProvider } from './lib/auth'
 import { queryClient } from './lib/queryClient'
 import { ThemeProvider } from './theme'
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')!).render(
           <AuthGate>
             <App />
           </AuthGate>
+          <SessionExpiredModal />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

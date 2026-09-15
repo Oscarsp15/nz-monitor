@@ -16,7 +16,7 @@ _ROOT = _HERE.parent                             # raíz del repo
 # Default de desarrollo: está en el código fuente, o sea que es PÚBLICO. Con él se puede forjar
 # un JWT de cualquier usuario, así que la app se niega a arrancar si sigue puesto (ver
 # `check_secret_key`).
-DEFAULT_SECRET_KEY = "nz-monitor-dev-secret-change-me"  # noqa: S105
+DEFAULT_SECRET_KEY = "nz-monitor-dev-secret-change-me"  # noqa: S105  # ci:secreto-publico
 
 
 class Settings(BaseSettings):
@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     netezza_user: str = ""
     netezza_password: str = ""
     netezza_security_level: int = 0
+    # timeout de CONEXIÓN (s): con la VPN caída, sin esto el connect() esperaba el timeout de TCP
+    # del sistema (minutos) y el request quedaba colgado sin límite.
+    netezza_connect_timeout: int = 10
     netezza_query_timeout: int = 30
     netezza_pool_max_size: int = 5
 

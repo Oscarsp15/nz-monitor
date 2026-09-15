@@ -67,6 +67,15 @@ def health():
 _STREAM_METRICS = ("health", "space_overview", "alerts")
 
 
+def _snapshot_timestamps() -> dict[str, str | None]:
+    """Marca de tiempo de cada snapshot vigilado (None si aún no hay)."""
+    out: dict[str, str | None] = {}
+    for m in _STREAM_METRICS:
+        snap = latest_snapshot(m)
+        out[m] = snap["collected_at"] if snap else None
+    return out
+
+
 @app.get("/api/stream", dependencies=[Depends(deny_password_pending_stream)])
 async def stream():
     """SSE: empuja un evento al cambiar un snapshot (la API vigila SQLite).
@@ -75,16 +84,15 @@ async def stream():
     acepta el token por query string: `/api/stream?token=<jwt>`.
     """
     async def gen():
-        last: dict[str, str | None] = {}
+        # Se parte del estado ACTUAL, no de vacío: si no, el primer barrido daría por "cambiado"
+        # todo lo que ya existía y el navegador repetiría las consultas que acaba de hacer al
+        # montar (medido: 5 peticiones duplicadas ~90 ms después de entrar).
+        last = _snapshot_timestamps()
         yield "event: hello\ndata: {}\n\n"
         while True:
-            changed = []
-            for m in _STREAM_METRICS:
-                snap = latest_snapshot(m)
-                ts = snap["collected_at"] if snap else None
-                if ts and last.get(m) != ts:
-                    last[m] = ts
-                    changed.append(m)
+            ahora = _snapshot_timestamps()
+            changed = [m for m, ts in ahora.items() if ts and last.get(m) != ts]
+            last = {**last, **ahora}
             yield (f"data: {json.dumps({'changed': changed})}\n\n" if changed
                    else ": keepalive\n\n")
             await asyncio.sleep(5)

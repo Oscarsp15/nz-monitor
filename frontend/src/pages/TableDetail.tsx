@@ -35,13 +35,13 @@ export function TableDetail() {
     <div className="space-y-5">
       <Link
         to="/tablas"
-        className="inline-flex items-center gap-1 font-dense text-label uppercase tracking-wide text-ink1 hover:text-ink0"
+        className="tap44 -ml-2 inline-flex items-center gap-1 rounded px-2 font-dense text-label uppercase tracking-wide text-ink1 hover:text-ink0"
       >
         <ArrowLeft size={14} /> Volver
       </Link>
 
       <div>
-        <h1 className="font-data text-lg text-ink0">{name || `objid ${id}`}</h1>
+        <h1 className="break-all font-data text-lg text-ink0">{name || `objid ${id}`}</h1>
         {meta && (
           <p className="font-data text-micro text-ink2">
             {meta.db}.{meta.sch} · owner {meta.owner} · creada {dt(meta.created)}
@@ -52,7 +52,7 @@ export function TableDetail() {
       {loading ? (
         // Esqueleto atenuado mientras carga TODO (evita la aparición escalonada)
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className="panel h-[72px] animate-pulse opacity-40" />
             ))}
@@ -68,7 +68,7 @@ export function TableDetail() {
       ) : (
         // Todo junto, con un fade sutil
         <div className="reveal space-y-5">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard label="Espacio" value={gb(meta?.gb)} />
             <KpiCard label="Skew" value={fixed(meta?.skew)} sub="0 = parejo · alto = desigual" />
             <KpiCard label="Dataslices ocupados" value={String(occupied)} sub="de 192 (≠ skew)" />

@@ -18,6 +18,19 @@
   --crit: #e5484d;
   --info: #5ba2c9;
   --live: #36e0c5;
+  /* Tipografía adaptativa (DESIGN §9.4): la escala micro de 11px es solo para ≥1024px; por
+     debajo, mínimo 12px, y los datos principales (--fs-body) no bajan de 14px. */
+  --fs-micro: 0.75rem; /* 12px */
+  --fs-body: 0.875rem; /* 14px */
+}
+
+@media (min-width: 1024px) {
+  :root,
+  [data-theme='dark'],
+  [data-theme='light'] {
+    --fs-micro: 0.6875rem; /* 11px — densidad §4, solo escritorio */
+    --fs-body: 0.8125rem; /* 13px */
+  }
 }
 
 /* Tema claro: papel + tinta, mismos semánticos con más contraste */
@@ -71,6 +84,19 @@
     .kpi-value {
       font-size: 1.75rem; /* 28px en escritorio */
     }
+  }
+}
+
+/* Objetivo táctil 44×44px (DESIGN §9.2): la fila/botón denso de escritorio no cambia — esto
+ * solo actúa cuando no hay hover disponible o el puntero es grueso (dedo), sin importar el
+ * ancho de la ventana (una tablet táctil de 1280px también lo necesita). */
+@media (hover: none), (pointer: coarse) {
+  .tap44 {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tap44-row {
+    min-height: 44px;
   }
 }
 

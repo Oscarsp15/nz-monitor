@@ -16,6 +16,16 @@ en Netezza en cada paso. Cada fase es desplegable por sí sola.
 **Pendiente:** lineage / grafo de dependencias de SPs · Fase 5 Redis (solo al escalar) ·
 auditoría de acciones por usuario (quién forzó qué consulta en vivo).
 
+**Rendimiento del catálogo (medido en el appliance, on-prem, VPN):**
+- Resumen de base en **una** consulta (`SUM(CASE WHEN skew>8 …)` en el mismo escaneo):
+  **2.13 s → 1.05 s** (DESA_RIESGOS, 11 155 tablas).
+- `db=*` sin N+1 (distribución de toda la página en un `UNION ALL`): **3.17 s → 2.80 s** y,
+  sobre todo, **8 consultas → 2**, constante con el nº de bases de la página.
+- Timeout de **conexión** (`NETEZZA_CONNECT_TIMEOUT`, 10 s): con la VPN caída el request ya no
+  se cuelga sin límite.
+- Los pasivos degradan `ok → stale` a 3× el intervalo del recolector (ya no se sirve un dato de
+  11 h como actual).
+
 ## Fase 0 — Medir (antes de tocar nada)
 - Instrumentar: contar queries/seg a Netezza y latencia por endpoint.
 - Identificar las vistas que más golpean (esperado: dashboard/alerts/health por el polling).

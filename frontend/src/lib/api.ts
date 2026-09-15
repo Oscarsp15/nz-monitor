@@ -155,10 +155,15 @@ function authHeaders(): Record<string, string> {
 /** Rutas donde un 401 es una respuesta esperada del formulario, no una sesión caducada. */
 const NO_RELOGIN = ['/auth/login', '/auth/change-password']
 
+/** Evento global: sesión caducada a mitad de una acción. `SessionExpiredModal` lo escucha
+ * y avisa antes de recargar — nunca recargar en silencio (se perdería lo que se estaba
+ * tecleando sin explicación). */
+export const SESSION_EXPIRED_EVENT = 'nzm:session-expired'
+
 function on401(status: number, path: string) {
   if (status === 401 && !NO_RELOGIN.some((p) => path.startsWith(p))) {
     clearToken()
-    location.reload() // sesión caducada → vuelve a la pantalla de login
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
   }
 }
 
@@ -260,8 +265,8 @@ export const api = {
       '/dataslice/tables',
       { ds: p.ds, page: p.page, fresh: p.fresh ?? false, order: p.order ?? 'ds' },
     ),
-  datasliceSummary: (ds: number) =>
-    get<{ total: number; skewed: number; ds: number } & Freshness>('/dataslice/summary', { ds }),
+  datasliceSummary: (ds: number, fresh = false) =>
+    get<{ total: number; skewed: number; ds: number } & Freshness>('/dataslice/summary', { ds, fresh }),
   monitoringSpace: () => get<Snapshot<SpaceByDb>>('/monitoring/space'),
   monitoringHealth: () => get<Snapshot<unknown>>('/monitoring/health'),
   monitoringAlerts: () => get<Snapshot<AlertsData>>('/monitoring/alerts'),

@@ -70,14 +70,30 @@ CREATE INDEX ix_snapshot_lookup ON metric_snapshot(metric_type, credential_id, c
 ```
 La API sirve el `payload_json` más reciente y devuelve también `collected_at` para el sello de frescura.
 
+**`stale` lo decide la API al servir, no el recolector.** El `status` guardado solo sabe cómo fue
+*esa* recolección; con el recolector parado, un snapshot de 11 h se seguía sirviendo como `ok`.
+`monitoring/router._serve` compara `age_seconds` con el intervalo del recolector de **esa** métrica
+(`collector_*_interval_seconds`, ver `AGENTS.md §6`) por `STALE_FACTOR` (3×, margen para un ciclo
+perdido) y degrada `ok → stale`. Un `error` real nunca se tapa con `stale`. La respuesta lleva
+`stale_after_seconds` para que el frontend pueda explicar el umbral.
+
 ## 4. Flujo "en vivo" (investigación)
 1. Usuario abre análisis de una tabla / da "Actualizar".
 2. Front llama al endpoint en vivo (con `?fresh=true` si forzó).
 3. API toma conexión **del pool**, ejecuta la query con **timeout**, devuelve resultado real.
 4. (Opcional) cachea 5–10 min para clics repetidos, pero `fresh=true` siempre lo salta.
+5. **Toda respuesta de investigación lleva `at` (marca de tiempo del dato) y `from_cache`**: es el
+   contrato con el que el frontend pinta el sello y el estado "actualizando…" de la revalidación
+   visible (`AGENTS.md §2.1`). Incluye `/api/table` y `/api/table/slices`, que son siempre en vivo
+   (`from_cache: false`).
 
 ## 5. Pool de conexiones Netezza
 - Pool por `host:port:db:user`, reutilizado. Sin abrir/cerrar por request.
+- **Timeout de conexión** (`NETEZZA_CONNECT_TIMEOUT`, 10 s): sin él, con la VPN caída el `connect()`
+  esperaba el timeout de TCP del sistema (minutos) y el request quedaba colgado. `nzpy` deja ese
+  timeout pegado al socket toda la sesión, así que tras conectar se sube a
+  `NETEZZA_QUERY_TIMEOUT + 5 s` (si no, una consulta de catálogo legítima de 5 s moriría en un
+  socket de 10 s). El límite real de la query lo sigue poniendo Netezza (`SET QUERY_TIMEOUT`).
 - Test de liveness **perezoso** (solo si la conexión lleva > N s ociosa), no en cada préstamo.
 - `_execute_with_catalog`: usar pool por catálogo (no reconectar a pelo).
 - Timeout y cancelación en toda query.

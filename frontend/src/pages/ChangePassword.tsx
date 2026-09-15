@@ -51,7 +51,7 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void }) {
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
           autoFocus
-          className="mt-1 w-full max-w-sm rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
+          className="tap44 mt-1 w-full max-w-sm rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
         />
       </label>
       <label className="block">
@@ -60,7 +60,7 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void }) {
           type="password"
           value={next}
           onChange={(e) => setNext(e.target.value)}
-          className="mt-1 w-full max-w-sm rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
+          className="tap44 mt-1 w-full max-w-sm rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
         />
       </label>
       <label className="block">
@@ -69,7 +69,7 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void }) {
           type="password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className="mt-1 w-full max-w-sm rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
+          className="tap44 mt-1 w-full max-w-sm rounded border border-line bg-bg1 px-3 py-2 font-data text-body text-ink0"
         />
         {mismatch && <span className="mt-1 block font-data text-micro text-crit">Las contraseñas no coinciden.</span>}
       </label>
@@ -78,7 +78,7 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void }) {
       <button
         type="submit"
         disabled={m.isPending || !canSubmit}
-        className="rounded border border-line bg-bg2 px-4 py-2 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+        className="tap44 rounded border border-line bg-bg2 px-4 py-2 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
       >
         {m.isPending ? 'Guardando…' : 'Cambiar contraseña'}
       </button>
@@ -107,7 +107,7 @@ export function ChangePassword() {
         <ChangePasswordForm />
         <button
           onClick={logout}
-          className="w-full rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0"
+          className="tap44 w-full rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0"
         >
           Salir
         </button>

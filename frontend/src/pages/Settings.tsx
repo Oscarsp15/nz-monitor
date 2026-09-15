@@ -91,7 +91,7 @@ export function Settings() {
             <p className="text-body text-ink1">Crear usuarios, cambiar roles, activar/desactivar o borrar.</p>
             <Link
               to="/usuarios"
-              className="inline-flex items-center gap-1.5 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line"
+              className="tap44 inline-flex items-center justify-center gap-1.5 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line"
             >
               <Users size={14} strokeWidth={1.5} />
               Administrar usuarios
@@ -117,7 +117,7 @@ export function Settings() {
                   value={sHost}
                   onChange={(e) => setSHost(e.target.value)}
                   placeholder="10.0.0.1"
-                  className="w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+                  className="tap44 w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -126,7 +126,7 @@ export function Settings() {
                   type="number"
                   value={sPort}
                   onChange={(e) => setSPort(Number(e.target.value) || 22)}
-                  className="w-24 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
+                  className="tap44 w-24 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -134,7 +134,7 @@ export function Settings() {
                 <input
                   value={sUser}
                   onChange={(e) => setSUser(e.target.value)}
-                  className="w-40 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
+                  className="tap44 w-40 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -144,7 +144,7 @@ export function Settings() {
                   value={sPass}
                   onChange={(e) => setSPass(e.target.value)}
                   placeholder={sftp.data?.has_password ? '•••••••• (guardada)' : '••••••••'}
-                  className="w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+                  className="tap44 w-48 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -153,7 +153,7 @@ export function Settings() {
                   value={sDef}
                   onChange={(e) => setSDef(e.target.value)}
                   placeholder="/nzscratch/nz"
-                  className="w-56 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
+                  className="tap44 w-56 rounded border border-line bg-bg1 px-3 py-1.5 font-data text-body text-ink0 placeholder:text-ink2"
                 />
               </label>
             </div>
@@ -161,14 +161,14 @@ export function Settings() {
               <button
                 onClick={() => saveSftp.mutate()}
                 disabled={saveSftp.isPending}
-                className="rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
+                className="tap44 rounded border border-line bg-bg2 px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink0 hover:bg-line disabled:opacity-50"
               >
                 {saveSftp.isPending ? 'Guardando…' : 'Guardar'}
               </button>
               <button
                 onClick={() => testSftp.mutate()}
                 disabled={testSftp.isPending || !sftp.data?.configured}
-                className="rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
+                className="tap44 rounded border border-line px-3 py-1.5 font-dense text-label uppercase tracking-wide text-ink1 hover:bg-bg2 hover:text-ink0 disabled:opacity-50"
               >
                 Probar conexión
               </button>
