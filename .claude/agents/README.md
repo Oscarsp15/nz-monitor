@@ -5,6 +5,7 @@ sesión: `backend-netezza`, `frontend-ux`, `diseno-responsive`, `qa-seguridad`, 
 
 ## Regla de uso: se reanuda, no se rearranca
 
+Vale para **cualquier rol**, no solo para QA: backend, frontend, diseño o revisor.
 Un agente que ya trabajó **conserva su transcript**. Reanudarlo cuesta una fracción de lo que cuesta
 uno nuevo, que tendría que volver a leer `AGENTS.md`, redescubrir la estructura y repetir las
 mediciones que el otro ya hizo.
