@@ -24,7 +24,7 @@ export function Login() {
   })
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg0 px-4">
+    <div className="min-h-app flex items-center justify-center bg-bg0 px-4">
       <form
         onSubmit={(e) => {
           e.preventDefault()

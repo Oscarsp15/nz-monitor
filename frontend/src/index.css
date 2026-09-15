@@ -98,6 +98,28 @@
   .tap44-row {
     min-height: 44px;
   }
+  /* Bug medido en celular real (PWA instalada): Safari/iOS hace zoom automático de toda la
+   * página al enfocar un campo con font-size < 16px. La escala densa de DESIGN §2 usa 12–14px
+   * en móvil (ver --fs-body arriba), así que en táctil todo campo de texto sube a 16px — la
+   * densidad de escritorio (mouse) no se toca. La especificidad de `:not()` (dos veces) supera
+   * a las utilidades `.text-body`/`.font-data` sin necesitar `!important`. */
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Pantallas centradas a pantalla completa (Login, cambio de contraseña forzado): `100vh` no se
+ * achica con el teclado virtual ni con la barra de Safari, así que el bloque queda centrado en
+ * una caja más alta que lo visible y aparece descuadrado — `100dvh` sí sigue el viewport visible.
+ * Además `body` ya mete el área segura como padding (ver arriba); si esta caja también reclama
+ * el 100% del viewport, el área segura se cuenta dos veces y empuja el bloque — se resta aquí
+ * para que sumen exactamente el viewport. Si `calc()`/`dvh` no se soportan, el navegador ignora
+ * la declaración entera y se queda con el `100vh` de la línea anterior. */
+.min-h-app {
+  min-height: 100vh;
+  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
 }
 
 /* Foco accesible en --live */

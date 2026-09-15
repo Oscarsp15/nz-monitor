@@ -12,7 +12,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { isLoading, authenticated, mustChangePassword } = useAuth()
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-bg0 text-ink2">…</div>
+    return <div className="min-h-app flex items-center justify-center bg-bg0 text-ink2">…</div>
   }
   if (!authenticated) {
     return <Login />

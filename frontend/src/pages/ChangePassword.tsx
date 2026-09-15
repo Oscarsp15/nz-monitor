@@ -91,7 +91,7 @@ export function ChangePassword() {
   const { user, logout } = useAuth()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg0 px-4">
+    <div className="min-h-app flex items-center justify-center bg-bg0 px-4">
       <div className="panel w-full max-w-sm space-y-4 p-6">
         <div className="flex items-center gap-2">
           <Activity size={18} strokeWidth={2} className="text-live" />
